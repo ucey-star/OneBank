@@ -292,6 +292,56 @@ def fetch_user_credit_cards(user_id):
         print(f"Error fetching credit cards: {e}")
         return []
 
+@main.route('/api/analyze_dom', methods=['POST'])
+def analyze_dom():
+    """Analyze DOM content and extract transaction details using GPT."""
+    print("Analyzing DOM")
+    try:
+        data = request.json
+        dom_content = data.get("html")
+        if not dom_content:
+            return jsonify({"error": "No DOM content provided"}), 400
+
+        # Call GPT to analyze the DOM
+        try:
+            completion = ai_client.chat.completions.create(
+                model="gpt-4",  # Replace with the model you prefer
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an AI model trained to extract key information from HTML DOM content. "
+                                   "Your task is to identify the merchant name from the given HTML. "
+                                   "If the information cannot be determined, provide 'Unknown' for those fields."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Analyze the following HTML content:\n{dom_content}\n"
+                                   f"Extract the merchant name in a strict JSON format like this: "
+                                   f'{{"merchant_name": "Merchant Name"}}'
+                    }
+                ],
+                max_tokens=150  # Adjust as needed
+            )
+            # Parse GPT response
+            response_content = completion.choices[0].message.content
+            print(dom_content)
+            print(f"Response from GPT: {response_content}")
+            try:
+                # Ensure the response is valid JSON
+                extracted_data = json.loads(response_content)
+                return jsonify(extracted_data)
+            except json.JSONDecodeError:
+                # print(f"Invalid JSON response from GPT: {response_content}")
+                return jsonify({"error": "Invalid response from GPT", "response": response_content}), 500
+        except Exception as e:
+            print(f"Failed to analyze DOM with GPT: {e}")
+            return jsonify({"error": "Failed to analyze DOM with GPT"}), 500
+
+    except Exception as e:
+        print(f"something else Failed: {e}")
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
 
 def get_best_card(transaction_details, user_id):
 
@@ -312,7 +362,7 @@ def get_best_card(transaction_details, user_id):
                 {"role": "system", "content": cards_details},
                 {"role": "user", "content": f"Identify the best credit card to use for a {transaction_details['category']} purchase of ${transaction_details['amount']}. Return only the card number and name and nothing else (very strict about this), if there are more than one than fit the transaction, pick one and return."}
             ],
-            max_tokens=50  # You might need more tokens to handle the complexity
+            max_tokens=100  # You might need more tokens to handle the complexity
         )
         return completion.choices[0].message.content  # Adjust based on the actual response structure
     except Exception as e:
@@ -321,6 +371,9 @@ def get_best_card(transaction_details, user_id):
     
 @main.route('api/get_card_advice', methods=['POST'])
 def card_advice():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "User not authenticated"}), 401
+    
     data = request.json
     print(data)
     user_id = current_user.id

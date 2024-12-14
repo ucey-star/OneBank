@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Merchant & Transaction Extractor</title>
+    <meta charset="UTF-8" />
+    <script src="popup.js" defer></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="extension-container">
+
+        <!-- Header with logo or icon -->
+        <header class="header">
+            <div class="logo">
+                <!-- You can replace this with an actual icon/image -->
+                <span class="logo-icon">🛍️</span>
+            </div>
+            <h1 class="title">Data Extractor</h1>
+        </header>
+
+        <!-- Instructions / Status -->
+        <section class="status-section">
+            <div id="plugin-status" class="status-badge">Status: Waiting for action...</div>
+        </section>
+
+        <!-- Main Content Card -->
+        <section class="main-card">
+            <p class="intro-text">Ready to uncover hidden details from the page? Click below to start analyzing and extracting merchant and transaction data.</p>
+            
+            <button id="start-extraction" class="action-button">
+                <span class="button-icon">🔍</span> Extract Merchant & Transaction
+            </button>
+
+            <div id="form-container" class="form-area" style="display:none;">
+                <!-- Dynamically inserted form goes here -->
+            </div>
+
+            <div id="recommendation-container" class="recommendation-area" style="display:none;">
+                <!-- Recommendation results appear here -->
+            </div>
+        </section>
+    </div>
+</body>
+</html>
