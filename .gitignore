@@ -6,3 +6,4 @@ Backend/.pytest_cache
 Backend/app/__pycache__
 Backend/app/.pytest_cache
 Backend/.DS_Store
+Backend/instance/
