@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
 from .models import User, PlaidAccessToken, CreditCard
+from .card_benefits_db import credit_cards_db
 import base64
 import os
 import datetime as dt
@@ -160,14 +161,11 @@ def check_status():
 # Register a new user
 @main.route("/signup", methods=["POST"])
 def signup():
-    print("Signup route")
     data = request.get_json()
     email = data.get("email")
     first_name = data.get("firstName")
     last_name = data.get("lastName")
     password = data.get("password")
-
-    print(data)
 
     user = User.query.filter_by(email=email).first()
     if user:
@@ -215,42 +213,73 @@ def logout():
     logout_user()
     return jsonify({"message": "Logged out successfully"}), 200
 
+@main.route('/download-extension')
+def download_extension():
+    """Serve the extension ZIP file."""
+    static_folder = os.path.join(os.getcwd(), 'static')  # Ensure absolute path
+    return send_from_directory(static_folder, 'extension.zip', as_attachment=True)
+
 @main.route('/api/get_credit_cards', methods=['GET'])
 @login_required
 def get_credit_cards():
-    credit_cards = CreditCard.query.filter_by(user_id=current_user.id).all()
-    card_list = [{
-        'cardNumber': card.card_number,
-        'cardHolderName': card.card_holder_name,
-        'expiryDate': card.expiry_date,
-        'cvv': card.cvv,
-        'benefits': card.benefits
-    } for card in credit_cards]
+    try:
+        # Fetch all credit cards linked to the current user
+        credit_cards = CreditCard.query.filter_by(user_id=current_user.id).all()
+        
+        # Check if the user has no linked credit cards
+        if not credit_cards:
+            return jsonify({
+                'message': 'No credit cards found for this user.',
+                'cards': []
+            }), 200
+        
+        # Prepare the list of credit cards
+        card_list = [{
+            'id': card.id,
+            'cardHolderName': card.card_holder_name,
+            'cardNumber': f"**** **** **** {card.card_number[-4:]}",
+            'expiryDate': card.expiry_date,
+            'issuer': card.issuer,
+            'cardType': card.card_type
+        } for card in credit_cards]
 
-    return jsonify({'cards': card_list}), 200
+        return jsonify({'cards': card_list}), 200
+
+    except Exception as e:
+        print(f"Error fetching credit cards: {e}")
+        return jsonify({'error': 'Failed to fetch credit cards'}), 500
+
 
 
 @main.route('/api/add-credit-card', methods=["POST"])
 @login_required
 def add_credit_card():
     print("Is authenticated?", current_user.is_authenticated)
+    
     if not current_user.is_authenticated:
         return jsonify({'error': 'User not authenticated'}), 401
+    
     if not request.json:
         return jsonify({'error': 'Request must be JSON'}), 400
 
+    # Extract fields from JSON payload
     card_number = request.json.get('cardNumber')
     card_holder_name = request.json.get('cardHolderName')
     expiry_date = request.json.get('expiryDate')
     cvv = request.json.get('cvv')
-    benefits = request.json.get('benefits')
+    issuer = request.json.get('issuer')  # New field
+    card_type = request.json.get('cardType')  # New field
 
-    if not all([card_number, card_holder_name, expiry_date, cvv]):
+    # Validate required fields
+    if not all([card_number, card_holder_name, expiry_date, cvv, issuer, card_type]):
         return jsonify({'error': 'Missing required credit card details'}), 400
 
-    # Check if card already exists to avoid duplicates
-    existing_card = CreditCard.query.filter_by(card_number=card_number,
-                                               user_id=current_user.id).first()
+    # Check for duplicate card
+    existing_card = CreditCard.query.filter_by(
+        card_number=card_number,
+        user_id=current_user.id
+    ).first()
+    
     if existing_card:
         return jsonify({'error': 'Credit card already registered'}), 409
 
@@ -260,7 +289,8 @@ def add_credit_card():
         card_holder_name=card_holder_name,
         expiry_date=expiry_date,
         cvv=cvv,
-        benefits=benefits,
+        issuer=issuer,
+        card_type=card_type,
         user_id=current_user.id  # Link the card to the logged-in user
     )
 
@@ -275,7 +305,8 @@ def add_credit_card():
             'cardHolderName': card_holder_name,
             'expiryDate': expiry_date,
             'cvv': cvv,
-            'benefits': benefits
+            'issuer': issuer,
+            'cardType': card_type
         }
     }), 201
 
@@ -283,14 +314,56 @@ def fetch_user_credit_cards(user_id):
     try:
         credit_cards = CreditCard.query.filter_by(user_id=user_id).all()
         return [{
-            'name': card.card_holder_name,
+            
+            'issuer': card.issuer,
+            'CardType': card.card_type,
             'number': card.card_number,
             'cvv': card.cvv,
-            'benefits': card.benefits
         } for card in credit_cards]
     except Exception as e:
         print(f"Error fetching credit cards: {e}")
         return []
+    
+@main.route('/api/update-credit-card/<int:card_id>', methods=['PUT'])
+@login_required
+def update_credit_card(card_id):
+    try:
+        # Find the credit card by ID and ensure it belongs to the logged-in user
+        card = CreditCard.query.filter_by(id=card_id, user_id=current_user.id).first()
+
+        if not card:
+            return jsonify({'error': 'Credit card not found'}), 404
+
+        # Get updated data from request
+        data = request.get_json()
+        card.card_holder_name = data.get('cardHolderName', card.card_holder_name)
+        card.expiry_date = data.get('expiryDate', card.expiry_date)
+        card.issuer = data.get('issuer', card.issuer)
+        card.card_type = data.get('cardType', card.card_type)
+
+        db.session.commit()
+        return jsonify({'message': 'Credit card updated successfully'}), 200
+
+    except Exception as e:
+        print(f"Error updating credit card: {e}")
+        return jsonify({'error': 'Failed to update credit card'}), 500
+
+@main.route('/api/delete_card/<int:card_id>', methods=['DELETE'])
+@login_required
+def delete_card(card_id):
+    """Delete a credit card belonging to the logged-in user."""
+    card = CreditCard.query.filter_by(id=card_id, user_id=current_user.id).first()
+
+    if not card:
+        return jsonify({"error": "Card not found or unauthorized"}), 404
+
+    try:
+        db.session.delete(card)
+        db.session.commit()
+        return jsonify({"message": "Card deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An error occurred while deleting the card"}), 500
 
 @main.route('/api/analyze_dom', methods=['POST'])
 def analyze_dom():
@@ -325,7 +398,7 @@ def analyze_dom():
             # Parse GPT response
             response_content = completion.choices[0].message.content
             print(dom_content)
-            print(f"Response from GPT: {response_content}")
+            # print(f"Response from GPT: {response_content}")
             try:
                 # Ensure the response is valid JSON
                 extracted_data = json.loads(response_content)
@@ -341,34 +414,83 @@ def analyze_dom():
         print(f"something else Failed: {e}")
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
+@main.route('/api/get_card_options', methods=['GET'])
+def get_card_options():
+    try:
+        issuers = {
+            issuer: list(cards.keys()) for issuer, cards in credit_cards_db.items()
+        }
+        return jsonify(issuers), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+def get_card_benefits(issuer, card_type):
+    """
+    Retrieve benefits for a given issuer and card type from the credit_cards_db.
+    """
+    try:
+        # print(f"Issuer: {issuer}, Card type: {card_type}")
+        issuer_cards = credit_cards_db.get(issuer, {})
+        # print(f"Issuer cards: {issuer_cards}")
+        card_info = issuer_cards.get(card_type, {})
+        # print(f"Card info: {card_info}")
+        rewards = card_info.get("Rewards", {})
+        # print(f"Card benefits: {rewards}")
+        
+        # Flatten rewards into a readable string
+        benefits = "; ".join([f"{key}: {value}" for key, value in rewards.items()])
+        # print(f"Card benefits: {benefits}")
+        return benefits if benefits else "No rewards available"
+    except Exception as e:
+        print(f"Error fetching card benefits: {e}")
+        return "No rewards available"
 
 
 def get_best_card(transaction_details, user_id):
-
+    """
+    Determine the best credit card for a transaction using AI, focusing purely on cashback benefits.
+    """
     # Fetch user-specific credit card data
-    credit_cards = fetch_user_credit_cards(user_id)  # Implement this function to fetch data from your database
+    credit_cards = fetch_user_credit_cards(user_id)  # Fetch cards from the database
+    # print(f"Credit cards: {credit_cards}")
     if not credit_cards:
         return "No credit cards available."
-    
-    # Construct the system message with user's credit card details
-    cards_details = "Here are the cards and their benefits: " + ", ".join(
-        [f"{card['name']}, {card['number']}  with benefits {card['benefits']}" for card in credit_cards]
+
+    # Prepare credit card details for AI
+    cards_details = "Here are the cards and their cashback benefits: " + ", ".join(
+        [f"{card.get('CardType', 'Unknown Type')}, benefits: {get_card_benefits(card.get('issuer'), card.get('CardType'))}" 
+         for card in credit_cards]
+    )
+    print("card detiuals", cards_details)
+
+    # Construct AI prompt
+    ai_prompt = (
+        f"Determine the best credit card for a purchase at {transaction_details.get('merchant', 'an unknown merchant')} "
+        f"amounting to ${transaction_details['amount']}. Consider only cashback benefits when selecting the card. "
+        f"Return the most suitable card(s) strictly by name, exactly as listed below: {cards_details}. "
+        f"You must return a card. If only one card qualifies, return it."
     )
 
+
     try:
+        # Call AI model for comparison
         completion = ai_client.chat.completions.create(
-            model="gpt-4o-mini",  # Adjust model as needed for your use case
+            model="gpt-4o-mini",  # Use an appropriate AI model
             messages=[
                 {"role": "system", "content": cards_details},
-                {"role": "user", "content": f"Identify the best credit card to use for a {transaction_details['category']} purchase of ${transaction_details['amount']}. Return only the card number and name and nothing else (very strict about this), if there are more than one than fit the transaction, pick one and return."}
+                {"role": "user", "content": ai_prompt}
             ],
-            max_tokens=100  # You might need more tokens to handle the complexity
+            max_tokens=500  # Enough for a concise response
         )
-        return completion.choices[0].message.content  # Adjust based on the actual response structure
+        
+        # Extract and return AI response
+        result = completion.choices[0].message.content.strip()
+        return result
+    
     except Exception as e:
         print(f"Failed to get recommendation: {e}")
-        return None
-    
+        return "Error processing your request. Please try again."
+
 @main.route('api/get_card_advice', methods=['POST'])
 def card_advice():
     if not current_user.is_authenticated:
@@ -378,8 +500,56 @@ def card_advice():
     print(data)
     user_id = current_user.id
     card_recommendation = get_best_card(data, user_id)  # Replace "transaction_details" with the actual transaction details
-    print(card_recommendation)
+    print("card rec", card_recommendation)
     return jsonify({"recommended_card": card_recommendation})
+
+def get_full_card_details_by_type(card_type, user_id):
+    """
+    Retrieve full card details by card type for the authenticated user.
+    
+    :param card_type: The type of card (e.g., "Chase Sapphire Preferred® Card").
+    :param user_id: The ID of the current user.
+    :return: A dictionary with full card details or an error message if not found.
+    """
+    try:
+        # Query the database for the specific card
+        card = CreditCard.query.filter_by(card_type=card_type, user_id=user_id).first()
+        
+        if card:
+            return {
+                "cardHolderName": card.card_holder_name,
+                "cardNumber": card.card_number,
+                "expiryDate": card.expiry_date,
+                "cvv": card.cvv,
+                "issuer": card.issuer,
+                "cardType": card.card_type
+            }
+        else:
+            return {"error": "No card found matching the provided type for this user."}
+    
+    except Exception as e:
+        print(f"Error fetching full card details: {e}")
+        return {"error": "Failed to retrieve card details. Please try again later."}
+
+@main.route('/api/get_full_card_details', methods=['GET'])
+@login_required
+def get_full_card_details():
+    """
+    API endpoint to retrieve full credit card details by card type for the authenticated user.
+    Query Parameter: cardType
+    Example: /api/get_full_card_details?cardType=Chase%20Sapphire%20Preferred®%20Card
+    """
+    card_type = request.args.get('cardType')
+    
+    if not card_type:
+        return jsonify({"error": "Card type parameter is required."}), 400
+    
+    user_id = current_user.id  # Get the current authenticated user ID
+    
+    # Fetch card details
+    card_details = get_full_card_details_by_type(card_type, user_id)
+    
+    return jsonify(card_details)
 
 def pretty_print_response(response):
     print(json.dumps(response, indent=2, sort_keys=True, default=str))
@@ -391,293 +561,3 @@ def format_error(e):
                       response.error_message, 'error_code': response.error_code, 'error_type': response.error_type}}
 
 
-# PLaid API routes
-
-
-@main.route("/api/info", methods=["POST"])
-def info():
-    global access_token
-    global item_id
-    return jsonify(
-        {"item_id": item_id, "access_token": access_token, "products": PLAID_PRODUCTS}
-    )
-
-@main.route('/api/create_link_token', methods=['POST'])
-def create_link_token():
-    try:
-        request = LinkTokenCreateRequest(
-            products=products,
-            client_name="Plaid Quickstart",
-            country_codes=list(map(lambda x: CountryCode(x), PLAID_COUNTRY_CODES)),
-            language='en',
-            user=LinkTokenCreateRequestUser(
-                client_user_id=str(time.time())
-            )
-        )
-        print("request", request)
-        if PLAID_REDIRECT_URI is not None:
-            request['redirect_uri'] = PLAID_REDIRECT_URI
-        if Products('statements') in products:
-            statements = LinkTokenCreateRequestStatements(
-                end_date=date.today(),
-                start_date=date.today()-timedelta(days=30)
-            )
-            request['statements']=statements
-
-    # create link token
-        response = client.link_token_create(request)
-        print("response", response)
-        return jsonify(response.to_dict())
-    except plaid.ApiException as e:
-        print(e)
-        return json.loads(e.body)
-
-
-@main.route("/api/create_link_token_for_payment", methods=["POST"])
-def create_link_token_for_payment():
-    global payment_id
-    try:
-        request = PaymentInitiationRecipientCreateRequest(
-            name="John Doe",
-            bacs=RecipientBACSNullable(account="26207729", sort_code="560029"),
-            address=PaymentInitiationAddress(
-                street=["street name 999"],
-                city="city",
-                postal_code="99999",
-                country="GB",
-            ),
-        )
-        response = client.payment_initiation_recipient_create(request)
-        recipient_id = response.recipient_id
-
-        request = PaymentInitiationPaymentCreateRequest(
-            recipient_id=recipient_id,
-            reference="TestPayment",
-            amount=PaymentAmount(PaymentAmountCurrency("GBP"), value=100.00),
-        )
-        response = client.payment_initiation_payment_create(request)
-        pretty_print_response(response.to_dict())
-
-        # We store the payment_id in memory for demo purposes - in production, store it in a secure
-        # persistent data store along with the Payment metadata, such as userId.
-        payment_id = response.payment_id
-
-        linkRequest = LinkTokenCreateRequest(
-            # The 'payment_initiation' product has to be the only element in the 'products' list.
-            products=[Products("payment_initiation")],
-            client_name="Plaid Test",
-            # Institutions from all listed countries will be shown.
-            country_codes=list(map(lambda x: CountryCode(x), PLAID_COUNTRY_CODES)),
-            language="en",
-            user=LinkTokenCreateRequestUser(
-                # This should correspond to a unique id for the current user.
-                # Typically, this will be a user ID number from your application.
-                # Personally identifiable information, such as an email address or phone number, should not be used here.
-                client_user_id=str(time.time())
-            ),
-            payment_initiation=LinkTokenCreateRequestPaymentInitiation(
-                payment_id=payment_id
-            ),
-        )
-
-        if PLAID_REDIRECT_URI is not None:
-            linkRequest["redirect_uri"] = PLAID_REDIRECT_URI
-        linkResponse = client.link_token_create(linkRequest)
-        pretty_print_response(linkResponse.to_dict())
-        return jsonify(linkResponse.to_dict())
-    except plaid.ApiException as e:
-        return json.loads(e.body)
-
-@main.route('/api/set_access_token', methods=['POST'])
-def get_access_token():
-    if not current_user.is_authenticated:
-        return jsonify({'error': 'User not authenticated'}), 401
-
-    data = request.get_json()
-    public_token = data.get('public_token')
-    if not public_token:
-        return jsonify({'error': 'Public token is required'}), 400
-
-    try:
-        exchange_request = ItemPublicTokenExchangeRequest(public_token=public_token)
-        exchange_response = client.item_public_token_exchange(exchange_request)
-        access_token = exchange_response['access_token']
-        item_id = exchange_response['item_id']
-
-        # Save or update the access token in the database
-        existing_token = PlaidAccessToken.query.filter_by(user_id=current_user.id).first()
-        if existing_token:
-            existing_token.access_token = access_token
-            existing_token.item_id = item_id
-        else:
-            new_token = PlaidAccessToken(access_token=access_token, item_id=item_id, user_id=current_user.id)
-            db.session.add(new_token)
-        db.session.commit()
-        return jsonify({'access_token': access_token, 'item_id': item_id}), 200
-    except plaid.ApiException as e:
-        return jsonify(format_error(e)), 400
-
-
-@main.route('/api/check_access_tokens', methods=['GET'])
-def check_access_tokens():
-    print(current_user)
-    if current_user.is_authenticated:
-        access_tokens = PlaidAccessToken.query.filter_by(user_id=current_user.id).all()
-    else:
-        # Handle the case where there is no user logged in
-        access_tokens = []
-    if access_tokens:
-        tokens_info = [{'access_token': token.access_token, 'item_id': token.item_id} for token in access_tokens]
-        return jsonify(tokens_info), 200
-    else:
-        return jsonify({'message': 'No access tokens found for the user.'}), 404
-
-
-# Data retrieval routes
-
-# Retrieve Transactions for an Item
-# https://plaid.com/docs/#transactions
-
-
-@main.route('/api/transactions', methods=['GET'])
-def get_transactions():
-    # Set cursor to empty to receive all historical updates
-    cursor = ''
-
-    # New transaction updates since "cursor"
-    added = []
-    modified = []
-    removed = [] # Removed transaction ids
-    has_more = True
-    try:
-        # Iterate through each page of new transaction updates for item
-        while has_more:
-            request = TransactionsSyncRequest(
-                access_token=access_token,
-                cursor=cursor,
-            )
-            response = client.transactions_sync(request).to_dict()
-            # Add this page of results
-            added.extend(response.added)
-            modified.extend(response.modified)
-            removed.extend(response.removed)
-            has_more = response.has_more
-            # Update cursor to the next cursor
-            cursor = response.next_cursor
-            pretty_print_response(response)
-
-        # Return the 8 most recent transactions
-        latest_transactions = sorted(added, key=lambda t: t['date'])[-8:]
-        return jsonify({
-            'latest_transactions': latest_transactions})
-
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response)
-
-# Retrieve Identity data for an Item
-# https://plaid.com/docs/#identity
-
-
-@main.route('/api/identity', methods=['GET'])
-def get_identity():
-    try:
-        request = IdentityGetRequest(
-            access_token=access_token
-        )
-        response = client.identity_get(request)
-        pretty_print_response(response.to_dict())
-        return jsonify(
-            {'error': None, 'identity': response.to_dict().accounts})
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response)
-
-
-# Retrieve real-time balance data for each of an Item's accounts
-# https://plaid.com/docs/#balance
-
-
-@main.route('/api/balance', methods=['GET'])
-def get_balance():
-    access_token_entry = PlaidAccessToken.query.filter_by(user_id=current_user.id).first()
-    if not access_token_entry or not access_token_entry.access_token:
-        return jsonify({'error': 'Access token not found.'}), 404
-
-    try:
-        balance_request = AccountsBalanceGetRequest(
-            access_token=access_token_entry.access_token
-        )
-        response = client.accounts_balance_get(balance_request)
-        return jsonify(response.to_dict())
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response), e.status
-
-# Retrieve an Item's accounts
-# https://plaid.com/docs/#accounts
-
-
-@main.route('/api/accounts', methods=['GET'])
-def get_accounts():
-    access_token_entry = PlaidAccessToken.query.filter_by(user_id=current_user.id).first()
-    if not access_token_entry or not access_token_entry.access_token:
-        return jsonify({'error': 'Access token not found.'}), 404
-
-    try:
-        account_request = AccountsGetRequest(
-            access_token=access_token_entry.access_token
-        )
-        response = client.accounts_get(account_request)
-        return jsonify(response.to_dict())
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response), e.status
-
-# Retrieve high-level information about an Item
-# https://plaid.com/docs/#retrieve-item
-
-
-@main.route('/api/item', methods=['GET'])
-def item():
-    try:
-        request = ItemGetRequest(access_token=access_token)
-        response = client.item_get(request)
-        request = InstitutionsGetByIdRequest(
-            institution_id=response.item.institution_id,
-            country_codes=list(map(lambda x: CountryCode(x), PLAID_COUNTRY_CODES))
-        )
-        institution_response = client.institutions_get_by_id(request)
-        pretty_print_response(response.to_dict())
-        pretty_print_response(institution_response.to_dict())
-        return jsonify({'error': None, 'item': response.to_dict().item, 'institution': institution_response.to_dict()['institution']})
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response)
-
-
-@main.route('/api/statements', methods=['GET'])
-def statements():
-    try:
-        request = StatementsListRequest(access_token=access_token)
-        response = client.statements_list(request)
-        pretty_print_response(response.to_dict())
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response)
-    try:
-        request = StatementsDownloadRequest(
-            access_token=access_token,
-            statement_id=response.accounts[0].statements[0].statement_id
-        )
-        pdf = client.statements_download(request)
-        return jsonify({
-            'error': None,
-            'json': response.to_dict(),
-            'pdf': base64.b64encode(pdf.read()).decode('utf-8'),
-        })
-    except plaid.ApiException as e:
-        error_response = format_error(e)
-        return jsonify(error_response)
-
-# Ensure to import these functions in your main application where you initialize your Flask app
