@@ -1,0 +1,26 @@
+merchant,amount,expected_best_card,result,status
+Starbucks,150,Chase Freedom Unlimited®,"Chase Freedom Unlimited®  
+American Express® Gold Card  
+Citi Double Cash® Card",Pass
+CVS,60,Chase Freedom Unlimited®,"Chase Freedom Unlimited®  
+Citi Double Cash® Card",Pass
+Chipotle,75,American Express® Gold Card,"- American Express® Gold Card
+- Chase Freedom Unlimited®
+- Citi Premier® Card",Pass
+CVS,60,Chase Freedom Unlimited®,"Chase Freedom Unlimited®, American Express® Gold Card, Citi Double Cash® Card",Pass
+Chipotle,75,American Express® Gold Card,"American Express® Gold Card, Chase Freedom Unlimited®",Pass
+Amazon,300,Chase Freedom Unlimited®,"Chase Freedom Unlimited®  
+Citi Double Cash® Card  
+Discover it® Cash Back",Pass
+Walmart,200,Citi Double Cash® Card,"Chase Freedom Unlimited®  
+Citi Double Cash® Card",Pass
+Target,250,Chase Freedom Unlimited®,"Chase Freedom Unlimited®, Citi Double Cash® Card",Pass
+Best Buy,700,Citi Double Cash® Card,"Chase Freedom Unlimited®  
+Citi Double Cash® Card  
+Discover it® Cash Back",Pass
+Uber,40,Chase Freedom Unlimited®,"Chase Freedom Unlimited®  
+American Express® Gold Card  
+Citi Premier® Card",Pass
+McDonald's,25,Chase Freedom Unlimited®,"Chase Freedom Unlimited®  
+American Express® Gold Card  
+Citi Premier® Card",Pass

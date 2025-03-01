@@ -1,0 +1,62 @@
+{
+    "credit_cards": [
+      {
+        "issuer": "Chase",
+        "CardType": "Chase Sapphire Preferred® Card"
+      },
+      {
+        "issuer": "Chase",
+        "CardType": "Chase Freedom Unlimited®"
+      },
+      {
+        "issuer": "American Express",
+        "CardType": "The Platinum Card® from American Express"
+      },
+      {
+        "issuer": "American Express",
+        "CardType": "American Express® Gold Card"
+      },
+      {
+        "issuer": "Capital One",
+        "CardType": "Capital One Venture Rewards Credit Card"
+      },
+      {
+        "issuer": "Capital One",
+        "CardType": "Capital One Quicksilver Cash Rewards Credit Card"
+      },
+      {
+        "issuer": "Discover",
+        "CardType": "Discover it® Cash Back"
+      },
+      {
+        "issuer": "Discover",
+        "CardType": "Discover it® Miles"
+      },
+      {
+        "issuer": "Citi",
+        "CardType": "Citi Double Cash® Card"
+      },
+      {
+        "issuer": "Citi",
+        "CardType": "Citi Premier® Card"
+      }
+    ],
+  
+    "transactions": [
+        {"merchant": "Starbucks", "amount": 150, "expected_best_card": "Chase Freedom Unlimited®"},
+        {"merchant": "CVS", "amount": 60, "expected_best_card": "Chase Freedom Unlimited®" },
+        {"merchant": "Chipotle", "amount": 75, "expected_best_card": "American Express® Gold Card"},
+        {"merchant": "CVS", "amount": 60, "expected_best_card": "Chase Freedom Unlimited®"},
+        {"merchant": "Chipotle", "amount": 75, "expected_best_card": "American Express® Gold Card"},
+        {"merchant": "Amazon", "amount": 300, "expected_best_card": "Chase Freedom Unlimited®"},
+        {"merchant": "Walmart", "amount": 200, "expected_best_card": "Citi Double Cash® Card"},
+        {"merchant": "Target", "amount": 250, "expected_best_card": "Chase Freedom Unlimited®"},
+        {"merchant": "Best Buy", "amount": 700, "expected_best_card": "Citi Double Cash® Card"},
+        {"merchant": "Uber", "amount": 40, "expected_best_card": "Chase Freedom Unlimited®"},
+        {"merchant": "McDonald's", "amount": 25, "expected_best_card": "Chase Freedom Unlimited®"}
+        
+        
+    ]
+
+  }
+  
