@@ -1,6 +1,9 @@
 // src/api/auth.js
+
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000"; // Default to localhost if env variable is missing
+
 export async function loginUser(email, password) {
-    const response = await fetch("http://127.0.0.1:5000/login", {
+    const response = await fetch(`${BASE_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -12,7 +15,7 @@ export async function loginUser(email, password) {
   
 
 export async function registerUser(firstName, lastName, email, password) {
-    const response = await fetch("http://127.0.0.1:5000/signup", {
+    const response = await fetch(`${BASE_URL}/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -38,7 +41,7 @@ export async function registerUser(firstName, lastName, email, password) {
   
 // Check if user is authenticated
 export async function checkAuthStatus() {
-    const response = await fetch("http://127.0.0.1:5000/status", {
+    const response = await fetch(`${BASE_URL}/status`, {
       credentials: "include",
     });
   
@@ -54,7 +57,7 @@ export async function checkAuthStatus() {
   
   // Log out the user
   export async function logoutUser() {
-    const response = await fetch("http://127.0.0.1:5000/logout", {
+    const response = await fetch(`${BASE_URL}/logout`, {
       method: "POST",
       credentials: "include",
     });

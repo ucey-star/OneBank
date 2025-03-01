@@ -1,6 +1,9 @@
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000"; // Default to localhost if env variable is missing
+
+
   // *** Add a user's credit card ***
 export async function addUserCard(cardData) {
-    const response = await fetch("http://127.0.0.1:5000/api/add-credit-card", {
+    const response = await fetch(`${BASE_URL}/api/add-credit-card`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -22,7 +25,7 @@ export async function addUserCard(cardData) {
   
   // *** Fetch the user's cards ***
   export async function fetchUserCards() {
-    const response = await fetch("http://127.0.0.1:5000/api/get_credit_cards", {
+    const response = await fetch(`${BASE_URL}/api/get_credit_cards`, {
       method: "GET",
       credentials: "include",
     });
@@ -37,7 +40,7 @@ export async function addUserCard(cardData) {
 
   // Function to fetch issuers and card types
 export async function fetchCardOptions() {
-    const response = await fetch("http://127.0.0.1:5000/api/get_card_options", {
+    const response = await fetch(`${BASE_URL}/api/get_card_options`, {
       method: "GET",
       credentials: "include",
     });
@@ -52,7 +55,7 @@ export async function fetchCardOptions() {
 
 // Function to update a user's card
 export async function updateUserCard(cardId, cardData) {
-    const response = await fetch(`http://127.0.0.1:5000/api/update-credit-card/${cardId}`, {
+    const response = await fetch(`${BASE_URL}/api/update-credit-card/${cardId}`, {
       method: "PUT",
       credentials: "include",
       headers: {
@@ -73,7 +76,7 @@ export async function updateUserCard(cardId, cardData) {
 
   // Function to delete a user's card
 export async function deleteUserCard(cardId) {
-    const response = await fetch(`http://127.0.0.1:5000/api/delete_card/${cardId}`, {
+    const response = await fetch(`${BASE_URL}/api/delete_card/${cardId}`, {
       method: "DELETE",
       credentials: "include",
     });
@@ -90,7 +93,7 @@ export async function deleteUserCard(cardId) {
 
   // Function to get card advice
 export async function getCardAdvice(merchant, amount) {
-    const response = await fetch("http://127.0.0.1:5000/api/get_card_advice", {
+    const response = await fetch(`${BASE_URL}/api/get_card_advice`, {
       method: "POST",
       credentials: "include",
       headers: {
