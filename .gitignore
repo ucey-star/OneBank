@@ -2,3 +2,6 @@ venv
 .history/
 Backend/app/.env
 Backend/quickstart
+Backend/.pytest_cache
+Backend/app/__pycache__
+Backend/app/.pytest_cache
