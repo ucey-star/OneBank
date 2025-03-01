@@ -65,8 +65,9 @@ class CreditCard(db.Model):
     card_holder_name = db.Column(db.String(100), nullable=False)
     expiry_date = db.Column(db.String(10), nullable=False)  # Format: MM/YY
     cvv = db.Column(db.String(4), nullable=False)
-    benefits = db.Column(db.Text)  # A text field to store a summary of benefits
+    issuer = db.Column(db.String(50), nullable=False)  # e.g., Visa, MasterCard, Amex
+    card_type = db.Column(db.String(50), nullable=False)  # e.g., Debit, Credit, Prepaid
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __repr__(self):
-        return f'<CreditCard {self.card_number}>'
+        return f'<CreditCard {self.card_number} ({self.issuer} - {self.card_type})>'
