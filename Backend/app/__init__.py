@@ -1,16 +1,14 @@
 from flask import Flask
 from flask_migrate import Migrate
 from sqlalchemy import inspect
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 from .models import User
 from .extensions import db, login_manager
 from dotenv import load_dotenv
-from plaid import Environment
-from plaid.api import plaid_api  # This is crucial if you're using components like PlaidApi
-import plaid 
 import openai
 import os
 
+# Load environment variables
 load_dotenv()
 
 @login_manager.user_loader
@@ -22,46 +20,51 @@ def setup_openai():
 
 def create_app():
     app = Flask(__name__, static_folder='static')
-    CORS(app, supports_credentials=True)  # Enable CORS globally
-
-    # Application Configuration
-    app.config['SECRET_KEY'] = 'your_hardcoded_secret_key'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'
+    
+    # Production-ready configuration
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback_secret_key')
+    
+    # Use environment variable for database URL, with SQLite as fallback
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+        'DATABASE_URL', 
+        'sqlite:///production.db'
+    )
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # CORS configuration for production
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "https://your-frontend-domain.com",
+                "http://localhost:3000"  # For local development
+            ]
+        }
+    }, supports_credentials=True)
+
+    # Session and security configurations
     app.config['SESSION_PERMANENT'] = True
     app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_COOKIE_SECURE'] = True  # Do not set this to True unless you're using HTTPS
+    app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-    app.config['REMEMBER_COOKIE_SAMESITE'] = 'None'
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
     app.config['REMEMBER_COOKIE_SECURE'] = True
 
+    # Initialize extensions
     db.init_app(app)
     Migrate(app, db)
     login_manager.init_app(app)
-    login_manager.login_view = 'login'
+    login_manager.login_view = 'main.login'
+
+    # Setup services
     setup_openai()
 
-    # Plaid Configuration
-    PLAID_CLIENT_ID = os.getenv('PLAID_CLIENT_ID')
-    PLAID_SECRET = os.getenv('PLAID_SECRET')
-    PLAID_ENV = os.getenv('PLAID_ENV', 'sandbox')
-    configuration = plaid.Configuration(
-        host=Environment.Sandbox if PLAID_ENV == 'sandbox' else Environment.Production,
-        api_key={
-            'clientId': PLAID_CLIENT_ID,
-            'secret': PLAID_SECRET,
-            'plaidVersion': '2020-09-14'
-        }
-    )
-    api_client = plaid.ApiClient(configuration)
-    plaid_client = plaid_api.PlaidApi(api_client)
-
-
-
+    # Register routes
     from .routes import main as main_routes
     app.register_blueprint(main_routes, url_prefix='/')
 
+    # Create database tables
     with app.app_context():
         db.create_all()
         inspector = inspect(db.engine)

@@ -6,6 +6,9 @@ from app.routes import get_best_card
 with open('app/tests/data/mock_data.json') as f:
     test_data = json.load(f)
 
+results_dir = 'tests/results'
+os.makedirs(results_dir, exist_ok=True)
+
 # Mock fetch_user_credit_cards function
 def mock_fetch_user_credit_cards(user_id):
     return test_data['credit_cards']
@@ -51,7 +54,10 @@ def test_get_best_card(transaction_cases, monkeypatch):
         assert passed, f"Failed for transaction: {case}"
     
     # After all test cases have been processed, save the test results
+    # Then update the part where you save the JSON
+    # Then update the part where you save the JSON
     if test_results:
-        with open('test_results.json', 'w') as outfile:
+        json_path = os.path.join(results_dir, 'test_results.json')
+        with open(json_path, 'w') as outfile:
             json.dump(test_results, outfile, indent=4)
-        print("\n✅ Test results saved to 'test_results.json'")
+        print(f"\n✅ Test results saved to '{json_path}'")
