@@ -1,112 +1,75 @@
 // Listen for messages from the popup or background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "extract_data") {
-        try {
-            extractData(sendResponse);
-        } catch (error) {
-            console.error("Error in extractData:", error);
-            sendResponse({
-                merchant_name: "Unknown",
-                transaction_amount: "Unknown",
-                error: error.message,
-            });
-        }
-        return true; // Keep the message channel open for asynchronous `sendResponse`
+        const domContent = document.body.outerHTML; // Get the entire DOM content
+        extractData(domContent, sendResponse); // Pass `sendResponse` to handle the combined extraction
+        return true; // Keeps the message channel open for asynchronous `sendResponse`
     }
 });
 
 // Function to extract both merchant details and transaction cost
-async function extractData(sendResponse) {
-    try {
-        const amountSelectors = [
-            '.total-amount', '.price', '.amount', '.transaction-amount', '.total', '.sum', '.grand-total'
-        ];
-        const amountRegex = /(\$|£|€|¥|₹|₩|₽|฿|₫|₱|₪|₭|₦|₨)\s?\d{1,3}(?:[,.']\d{3})*(?:[,.]\d{2})?/g;
+function extractData(domContent, sendResponse) {
+    const BATCH_SIZE = 500; // Number of elements per batch
+    const domElements = domContent.split(/\s+/); // Split by whitespace or elements
+    const totalBatches = Math.ceil(domElements.length / BATCH_SIZE);
+    let currentBatch = 0;
 
-        let transactionAmount = getTextFromSelectors(amountSelectors);
-        const pageText = document.body.innerText;
+    // Variables to store extracted details
+    let merchantName = null;
+    let transactionAmount = null;
 
-        // Fallback to regex for amount
-        if (!transactionAmount || transactionAmount === 'Unknown') {
-            const amounts = pageText.match(amountRegex);
-            if (amounts && amounts.length === 1) {
-                transactionAmount = amounts[0];
-            } else if (amounts && amounts.length > 1) {
-                transactionAmount = findTotalAmount(pageText, amounts);
-            } else {
-                transactionAmount = 'Unknown';
-            }
+    function sendBatch() {
+        if (currentBatch >= totalBatches) {
+            // If no more batches and details not found, fallback to manual input
+            sendResponse({
+                merchant_name: merchantName || "Unknown",
+                transaction_amount: transactionAmount || "Unknown"
+            });
+            return;
         }
 
-        // Use domain name as the merchant name
-        const merchantName = getDomainName(window.location.hostname);
+        const batch = domElements.slice(
+            currentBatch * BATCH_SIZE,
+            (currentBatch + 1) * BATCH_SIZE
+        );
+        currentBatch++;
 
-        console.log("Extracted Data:", { merchantName, transactionAmount });
-
-        // Send the extracted data back
-        sendResponse({
-            merchant_name: merchantName || 'Unknown',
-            transaction_amount: transactionAmount || 'Unknown',
-        });
-    } catch (error) {
-        console.error('Error extracting data:', error);
-        sendResponse({
-            merchant_name: 'Unknown',
-            transaction_amount: 'Unknown',
-            error: error.message,
-        });
-    }
-}
-
-// Helper function to get text from specified selectors
-function getTextFromSelectors(selectors) {
-    for (const selector of selectors) {
-        const elements = document.querySelectorAll(selector);
-        for (const element of elements) {
-            const text = element.innerText?.trim();
-            if (text) {
-                return text;
-            }
-        }
-    }
-    return null;
-}
-
-// Function to extract the domain name
-function getDomainName(hostname) {
-    let domain = hostname.toLowerCase().replace(/^www\./, '');
-    const parts = domain.split('.');
-    if (parts.length > 2) {
-        const tld = parts[parts.length - 1];
-        const sld = parts[parts.length - 2];
-        const ccTLDs = ['co', 'com', 'net', 'org', 'gov', 'edu', 'ac'];
-        if (ccTLDs.includes(sld)) {
-            domain = parts.slice(-3).join('.');
-        } else {
-            domain = parts.slice(-2).join('.');
-        }
-    } else {
-        domain = parts.join('.');
-    }
-    const domainParts = domain.split('.');
-    return domainParts.length >= 2
-        ? domainParts[domainParts.length - 2].charAt(0).toUpperCase() + domainParts[domainParts.length - 2].slice(1)
-        : domain;
-}
-
-// Function to find the total amount from multiple matches
-function findTotalAmount(pageText, amounts) {
-    const lines = pageText.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (/total amount|amount due|grand total|order total|total|balance due|sum/i.test(line)) {
-            for (let j = i; j <= i + 2 && j < lines.length; j++) {
-                const amountMatch = lines[j].match(/(\$|£|€|¥|₹|₩|₽|฿|₫|₱|₪|₭|₦|₨)\s?\d{1,3}(?:[,.']\d{3})*(?:[,.]\d{2})?/);
-                if (amountMatch) {
-                    return amountMatch[0];
+        // Send the batch to the server
+        fetch('http://127.0.0.1:5000/api/analyze_dom', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ html: batch.join(' ') }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                // Update merchant name or transaction amount if found
+                if (data.merchant_name && data.merchant_name !== 'Unknown') {
+                    merchantName = data.merchant_name;
                 }
-            }
-        }
+                if (data.transaction_amount && data.transaction_amount !== 'Unknown') {
+                    transactionAmount = data.transaction_amount;
+                }
+
+                // If either detail is found, send the response immediately
+                if (merchantName || transactionAmount) {
+                    sendResponse({
+                        merchant_name: merchantName || "Unknown",
+                        transaction_amount: transactionAmount || "Unknown"
+                    });
+                } else {
+                    sendBatch(); // Continue to the next batch
+                }
+            })
+            .catch((error) => {
+                console.error('Error analyzing batch:', error);
+                sendResponse({
+                    merchant_name: merchantName || "Unknown",
+                    transaction_amount: transactionAmount || "Unknown"
+                }); // Final response on error
+            });
     }
-    return amounts.sort((a, b) => parseFloat(b.replace(/[^0-9.]+/g, '')) - parseFloat(a.replace(/[^0-9.]+/g, '')))[0];
+
+    sendBatch(); // Start processing batches
 }

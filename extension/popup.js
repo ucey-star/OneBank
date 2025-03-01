@@ -1,34 +1,14 @@
-// popup.js
+let isLoggedIn = false; // Cache to track the login state
 
-let isLoggedIn = false; // Cache to track login state
-
-// Check login status on extension load
-document.addEventListener("DOMContentLoaded", async () => {
-    isLoggedIn = await checkLoginStatus();
-});
-
-// Event listener for the "Start Extraction" button
-document.getElementById('start-extraction').addEventListener('click', async () => {
+document.getElementById('start-extraction').addEventListener('click', () => {
     const statusElement = document.getElementById('plugin-status');
     const formContainer = document.getElementById('form-container');
     const recommendationContainer = document.getElementById('recommendation-container');
-
-    // Re-validate login status if not logged in
-    if (!isLoggedIn) {
-        isLoggedIn = await checkLoginStatus();
-    }
-
-    if (!isLoggedIn) {
-        statusElement.textContent = "Please log in to extract data.";
-        showLoginForm();
-        return;
-    }
 
     statusElement.textContent = 'Extracting merchant details and transaction cost...';
     formContainer.style.display = 'none';
     recommendationContainer.style.display = 'none';
 
-    // Send a message to the content script to extract data from the active tab
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
             if (response && response.merchant_name && response.transaction_amount) {
@@ -42,22 +22,6 @@ document.getElementById('start-extraction').addEventListener('click', async () =
     });
 });
 
-// Event listener for the "Open Website" button
-document.getElementById('open-website').addEventListener('click', () => {
-    const websiteUrl = 'http://localhost:3000'; // Replace with your website URL
-    chrome.tabs.create({ url: websiteUrl });
-});
-
-// Function to check login status by communicating with the background script
-async function checkLoginStatus() {
-    return new Promise((resolve) => {
-        chrome.runtime.sendMessage({ action: 'checkLoginStatus' }, function(response) {
-            resolve(response.is_logged_in);
-        });
-    });
-}
-
-// Function to display an editable form with extracted or default data
 function showEditableForm(merchant, amount) {
     const formContainer = document.getElementById('form-container');
     formContainer.innerHTML = `
@@ -78,86 +42,53 @@ function showEditableForm(merchant, amount) {
     });
 }
 
-// Function to handle the data after the user edits or confirms it
 async function handleEditedData(merchant, amount) {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
 
     if (!isLoggedIn) {
-        isLoggedIn = await checkLoginStatus();
-        if (!isLoggedIn) {
-            recommendationContainer.textContent = "Please log in to view recommendations.";
-            showLoginForm();
+        // Revalidate login state if necessary
+        try {
+            const authResponse = await fetch('http://127.0.0.1:5000/status', { credentials: 'include' });
+            const authStatus = await authResponse.json();
+
+            if (authStatus.is_logged_in) {
+                isLoggedIn = true; // Cache login state
+            } else {
+                recommendationContainer.textContent = "Please log in to view recommendations.";
+                showLoginForm();
+                return; // Exit early to prevent further execution
+            }
+        } catch (error) {
+            console.error("Error checking authentication:", error);
+            recommendationContainer.textContent = "An error occurred. Please try again.";
             return;
         }
     }
 
-    const data = {
-        category: merchant,
-        amount: parseFloat(amount),
-    };
+    // User is logged in, proceed with card advice
+    try {
+        const data = {
+            category: merchant,
+            amount: parseFloat(amount),
+        };
 
-    // Get card advice by sending a message to the background script
-    chrome.runtime.sendMessage({ action: 'getCardAdvice', data }, function(response) {
-        if (response.error) {
-            console.error("Error fetching card advice:", response.error);
-            recommendationContainer.textContent = "An error occurred while fetching recommendations.";
-            return;
-        }
-
-        const cardResult = response.result;
-        // Update the recommendation container with the recommended card
-        recommendationContainer.textContent = `Recommended Card: ${cardResult.recommended_card}`;
-        const cardType = cardResult.recommended_card;
-
-        // Now fetch full card details
-        chrome.runtime.sendMessage({ action: 'getFullCardDetails', cardType }, function(response) {
-            if (response.error) {
-                console.error("Error fetching full card details:", response.error);
-                recommendationContainer.textContent = "An error occurred while fetching card details.";
-                return;
-            }
-
-            const fullCardDetails = response.result;
-
-            // Display full card details
-            recommendationContainer.innerHTML = `
-                <h3>Recommended Card Details:</h3>
-                <p><strong>Card Holder:</strong> ${fullCardDetails.cardHolderName}</p>
-                <p>
-                    <strong>Card Number:</strong>
-                    <span id="cardNumber" class="blurred">${fullCardDetails.cardNumber}</span>
-                    <button id="copyCardNumber">📋</button>
-                </p>
-                <p>
-                    <strong>Expiry Date:</strong>
-                    <span id="expiryDate" class="blurred">${fullCardDetails.expiryDate}</span>
-                    <button id="copyExpiryDate">📋</button>
-                </p>
-                <p>
-                    <strong>CVV:</strong>
-                    <span id="cvv" class="blurred">${fullCardDetails.cvv}</span>
-                    <button id="copyCVV">📋</button>
-                </p>
-                <p><strong>Issuer:</strong> ${fullCardDetails.issuer}</p>
-                <p><strong>Card Type:</strong> ${fullCardDetails.cardType}</p>
-            `;
-
-            // Add event listeners for copy buttons
-            document.getElementById('copyCardNumber').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.cardNumber);
-            });
-            document.getElementById('copyExpiryDate').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.expiryDate);
-            });
-            document.getElementById('copyCVV').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.cvv);
-            });
+        const cardResponse = await fetch('http://127.0.0.1:5000/api/get_card_advice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
         });
-    });
+
+        const cardResult = await cardResponse.json();
+        recommendationContainer.textContent = `Recommended Card: ${cardResult.recommended_card}`;
+    } catch (error) {
+        console.error("Error fetching card advice:", error);
+        recommendationContainer.textContent = "An error occurred while fetching recommendations.";
+    }
 }
 
-// Function to display the login form
 function showLoginForm() {
     const formContainer = document.getElementById('form-container');
     formContainer.innerHTML = `
@@ -171,29 +102,32 @@ function showLoginForm() {
     `;
     formContainer.style.display = 'block';
 
-    document.getElementById('login-submit').addEventListener('click', () => {
+    document.getElementById('login-submit').addEventListener('click', async () => {
         const email = document.getElementById('email-input').value;
         const password = document.getElementById('password-input').value;
 
-        // Perform login by sending a message to the background script
-        chrome.runtime.sendMessage({ action: 'performLogin', credentials: { email, password } }, function(response) {
-            if (response.success) {
-                isLoggedIn = true;
-                document.getElementById('plugin-status').textContent = "Logged in successfully!";
-                // Hide the login form after successful login
-                formContainer.style.display = 'none';
-            } else {
-                alert(response.error);
-            }
-        });
-    });
-}
+        try {
+            const loginResponse = await fetch('http://127.0.0.1:5000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+                credentials: 'include',
+            });
 
-// Function to copy text to the clipboard
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(function() {
-        console.log('Copied to clipboard successfully!');
-    }, function(err) {
-        console.error('Could not copy text: ', err);
+            if (loginResponse.ok) {
+                const loginResult = await loginResponse.json();
+                document.getElementById('plugin-status').textContent = "Logged in successfully. Welcome, " + loginResult.user.email + "!";
+                formContainer.style.display = 'none';
+                isLoggedIn = true; // Cache login state
+            } else {
+                const errorResult = await loginResponse.json();
+                alert(errorResult.error || "Login failed. Please check your credentials and try again.");
+            }
+        } catch (error) {
+            console.error("Error logging in:", error);
+            alert("An error occurred during login. Please try again.");
+        }
     });
 }

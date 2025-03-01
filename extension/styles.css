@@ -151,39 +151,6 @@ body {
     margin-bottom: 5px;
 }
 
-
-/* Website Button */
-.website-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #4a90e2, #6eb8f7); /* Gradient blue */
-    color: #fff;
-    padding: 6px 10px; /* Reduced padding */
-    border: none;
-    border-radius: 15px; /* Smaller, rounded edges */
-    font-size: 0.75rem; /* Slightly smaller font size */
-    font-weight: bold;
-    cursor: pointer;
-    text-align: center;
-    margin: 8px auto; /* Smaller vertical spacing */
-    width: 50%; /* Narrower width */
-    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.1); /* Softer shadow */
-    transition: background 0.3s ease, transform 0.2s ease;
-}
-
-.website-button:hover {
-    background: linear-gradient(135deg, #3b78d4, #559de6); /* Darker on hover */
-    transform: translateY(-1px); /* Subtle lift effect */
-}
-
-.button-icon {
-    margin-right: 5px; /* Smaller spacing between icon and text */
-    font-size: 1rem; /* Slightly smaller icon size */
-}
-
-
-
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
