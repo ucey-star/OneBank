@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { loginUser } from "../api/auth";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate, Link} from "react-router-dom"; 
 
 
 export default function LoginPage() {
@@ -75,7 +75,7 @@ export default function LoginPage() {
 
         <p className="mt-4 text-gray-600 text-sm">
           Don’t have an account?{" "}
-          <a href="/signup" className="text-blue-600 hover:underline">
+          <Link to="/signup" className="text-blue-600 hover:underline">
             Sign Up
           </a>
         </p>
