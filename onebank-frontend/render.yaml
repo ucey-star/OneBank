@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: OneBankapp
+    buildCommand: npm run build  # Or whatever your build command is
+    startCommand: npm start      # Or your start command
+    env: node
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
