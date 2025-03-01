@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { registerUser } from "../api/auth"; // Import your API function
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");
@@ -114,9 +114,9 @@ export default function SignUpPage() {
 
         <p className="mt-4 text-gray-600 text-sm">
           Already have an account?{" "}
-          <a href="/login" className="text-blue-600 hover:underline">
+          <Link to="/login" className="text-blue-600 hover:underline">
             Log In
-          </a>
+          </Link>
         </p>
       </div>
     </div>
