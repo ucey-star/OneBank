@@ -2,7 +2,8 @@
     "manifest_version": 3,
     "name": "Transaction Extractor",
     "version": "1.0",
-    "permissions": ["activeTab", "scripting"],
+    "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest",
+    "webRequestBlocking"],
     "host_permissions": ["http://*/*", "https://*/*"], 
     "action": {
       "default_popup": "popup.html"

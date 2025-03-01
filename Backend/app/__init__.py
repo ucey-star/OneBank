@@ -21,19 +21,20 @@ def setup_openai():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='static')
     CORS(app, supports_credentials=True)  # Enable CORS globally
 
     # Application Configuration
     app.config['SECRET_KEY'] = 'your_hardcoded_secret_key'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SESSION_PERMANENT'] = False
+    app.config['SESSION_PERMANENT'] = True
     app.config['SESSION_USE_SIGNER'] = True
     app.config['SESSION_COOKIE_SECURE'] = True  # Do not set this to True unless you're using HTTPS
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'None'
     app.config['REMEMBER_COOKIE_SAMESITE'] = 'None'
+    app.config['REMEMBER_COOKIE_SECURE'] = True
 
     db.init_app(app)
     Migrate(app, db)
