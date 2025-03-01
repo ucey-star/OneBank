@@ -1,3 +1,5 @@
+I'll update the README to reflect that your frontend directory is named "onebank-frontend" instead of just "frontend":
+
 # One Bank
 
 ## Project Overview
@@ -22,7 +24,7 @@ One Bank is an innovative platform designed to help users optimize their credit 
 1. Clone the repository
 ```bash
 git clone https://github.com/ucey-star/OneBank.git
-cd OneBank/backend
+cd OneBank/Backend
 ```
 
 2. Create a virtual environment
@@ -54,7 +56,7 @@ python run.py
 
 1. Navigate to the frontend directory
 ```bash
-cd ../frontend
+cd ../onebank-frontend
 ```
 
 2. Install npm dependencies
@@ -62,10 +64,17 @@ cd ../frontend
 npm install
 ```
 
-3. Start the frontend development server
+3. Build the React application
 ```bash
-npm start
+npm run build
 ```
+
+4. Start the Node.js server to serve the frontend
+```bash
+node server.js
+```
+
+The server will serve the frontend application and properly handle all routes, ensuring that navigation to pages like `/login` and `/signup` works correctly.
 
 ## Browser Plugin Setup
 
@@ -78,6 +87,16 @@ The browser plugin is developed for Chrome. To install:
 
 - Ensure you have the necessary API keys (e.g., OpenAI) configured in your environment variables
 - Update database configurations in the backend settings
+- Make sure your CORS settings in the backend allow requests from your frontend domain
+
+## Frontend Server Details
+
+The frontend is served using a Node.js Express server that handles all routes and redirects them to the React application. This ensures that directly accessing routes like `/signup` will work properly instead of resulting in 404 errors.
+
+The server.js file contains a simple Express configuration that:
+- Serves static files from the build directory
+- Redirects all routes to the React application's index.html
+- Handles proper routing for single-page applications
 
 ## Future Roadmap
 
@@ -87,7 +106,7 @@ The browser plugin is developed for Chrome. To install:
 
 ## Technologies Used
 
-- Frontend: React, Tailwind CSS
+- Frontend: React, Tailwind CSS, Express.js (for serving the frontend)
 - Backend: Flask
 - Database: SQLite
 - Browser Plugin: JavaScript, Chrome Extension API
