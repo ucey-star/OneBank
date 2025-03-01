@@ -2,9 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   checkAuthStatus,
-  logoutUser
+  logoutUser,
 } from "../api/auth";
-import { fetchUserCards } from "../api/credit_cards";
+import {
+  fetchUserCards,
+  deleteUserCard,    // Import the delete function
+} from "../api/credit_cards";
+import AddCardModal from "../components/AddCardModal"; // Import the AddCardModal component
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -12,6 +16,9 @@ export default function Dashboard() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(true);
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("add");
+  const [cardToEdit, setCardToEdit] = useState(null);
 
   useEffect(() => {
     async function verifyUser() {
@@ -32,21 +39,23 @@ export default function Dashboard() {
     verifyUser();
   }, [navigate]);
 
+  // Define loadUserCards outside of useEffect to call it from elsewhere
+  async function loadUserCards() {
+    try {
+      setCardsLoading(true);
+      const userCards = await fetchUserCards(); // e.g., returns [{...}, {...}]
+      setCards(userCards);
+    } catch (err) {
+      console.error("Error fetching cards:", err);
+    } finally {
+      setCardsLoading(false);
+    }
+  }
+
   // Once user is authed, fetch their credit cards
   useEffect(() => {
     if (isAuthed) {
       loadUserCards();
-    }
-    async function loadUserCards() {
-      try {
-        setCardsLoading(true);
-        const userCards = await fetchUserCards(); // e.g. returns [{...}, {...}]
-        setCards(userCards);
-      } catch (err) {
-        console.error("Error fetching cards:", err);
-      } finally {
-        setCardsLoading(false);
-      }
     }
   }, [isAuthed]);
 
@@ -104,7 +113,11 @@ export default function Dashboard() {
                 Your Credit Cards
               </h3>
               <button
-                onClick={() => navigate("/add-card")} // or open a modal, etc.
+                onClick={() => {
+                  setModalMode("add");
+                  setCardToEdit(null);
+                  setIsCardModalOpen(true);
+                }}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow hover:bg-blue-700 transition"
               >
                 <svg
@@ -117,15 +130,16 @@ export default function Dashboard() {
                 Add Card
               </button>
             </div>
+
             {cardsLoading ? (
               <div className="text-gray-500">Loading cards...</div>
             ) : cards.length === 0 ? (
               <div className="text-gray-500">No cards found.</div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-                {cards.map((card, idx) => (
+                {cards.map((card) => (
                   <div
-                    key={idx}
+                    key={card.id}
                     className="relative p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg text-white"
                   >
                     <div className="flex justify-between items-center mb-4">
@@ -135,23 +149,27 @@ export default function Dashboard() {
                         </h4>
                         <p className="text-sm">{card.cardType}</p>
                       </div>
-                      <img
+                      {/* Optional: Include issuer logo if available */}
+                      {/* <img
                         src={`/images/card-logos/${card.issuer.toLowerCase()}.png`}
                         alt={`${card.issuer} logo`}
                         className="h-8 w-auto"
-                      />
+                      /> */}
                     </div>
                     <div className="mt-4">
                       <p className="text-sm tracking-widest font-mono">
-                        **** **** **** {card.cardNumber.slice(-4)}
+                        {card.cardNumber}
                       </p>
                       <p className="text-sm mt-2">
                         Exp: {card.expiryDate}
                       </p>
                     </div>
-                    <div className="absolute top-4 right-4">
-                      {/* Perhaps an icon button to edit or remove the card */}
-                      <button className="text-white hover:text-gray-200">
+                    {/* Actions: Edit and Delete */}
+                    <div className="absolute top-4 right-4 flex space-x-2">
+                      <button
+                        onClick={() => handleEditCard(card)}
+                        className="text-white hover:text-gray-200"
+                      >
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -162,7 +180,25 @@ export default function Dashboard() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M15.232 5.232l3.536 3.536M9 11l6 6M9 11l-3-3m6 6l-3-3"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="text-white hover:text-gray-200"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
                           />
                         </svg>
                       </button>
@@ -203,6 +239,16 @@ export default function Dashboard() {
           © {new Date().getFullYear()} OneBank. All rights reserved.
         </div>
       </footer>
+
+      {/* -- Add/Edit Card Modal -- */}
+      {isCardModalOpen && (
+        <AddCardModal
+          onClose={() => setIsCardModalOpen(false)}
+          onCardSaved={handleCardSaved}
+          card={cardToEdit}
+          mode={modalMode}
+        />
+      )}
     </div>
   );
 
@@ -214,6 +260,31 @@ export default function Dashboard() {
       navigate("/login");
     } catch (err) {
       console.error("Failed to log out:", err);
+    }
+  }
+
+  function handleCardSaved() {
+    // Re-fetch the cards from the server for consistency
+    loadUserCards();
+    setIsCardModalOpen(false);
+    setCardToEdit(null);
+  }
+
+  function handleEditCard(card) {
+    setModalMode("edit");
+    setCardToEdit(card);
+    setIsCardModalOpen(true);
+  }
+
+  async function handleDeleteCard(cardId) {
+    if (window.confirm("Are you sure you want to delete this card?")) {
+      try {
+        await deleteUserCard(cardId);
+        loadUserCards();
+      } catch (err) {
+        console.error("Failed to delete card:", err);
+        // Optionally, display an error message to the user
+      }
     }
   }
 }
