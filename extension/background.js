@@ -1,3 +1,6 @@
+// At the top of background.js
+import { API_URL } from './config.js';
+
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     if (message.action === 'checkLoginStatus') {
         checkLoginStatus().then(status => {
@@ -38,7 +41,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 // Function to check if the user is logged in by making a request to the backend
 async function checkLoginStatus() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/status', {
+        const response = await fetch(`${API_URL}/status`, {
             method: 'GET',
             credentials: 'include' // Include cookies
         });
@@ -56,7 +59,7 @@ async function checkLoginStatus() {
 // Function to perform login
 async function performLogin(credentials) {
     try {
-        const response = await fetch('http://127.0.0.1:5000/login', {
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -79,7 +82,7 @@ async function performLogin(credentials) {
 // Function to get card advice from the backend
 async function getCardAdvice(data) {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/get_card_advice', {
+        const response = await fetch(`${API_URL}/api/get_card_advice`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -102,7 +105,7 @@ async function getCardAdvice(data) {
 // Function to get full card details from the backend
 async function getFullCardDetails(cardType) {
     try {
-        const url = `http://127.0.0.1:5000/api/get_full_card_details?cardType=${encodeURIComponent(cardType)}`;
+        const url = `${API_URL}/api/get_full_card_details?cardType=${encodeURIComponent(cardType)}`;
         const response = await fetch(url, {
             method: 'GET',
             credentials: 'include', // Include cookies

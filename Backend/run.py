@@ -1,8 +1,18 @@
 from app import create_app, load_user
 from app.extensions import login_manager
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+# Create the app
 app = create_app()
 login_manager.user_loader(load_user)
 
+# Adjust run configuration for production
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Use environment variable to determine debug mode
+    debug_mode = os.getenv('FLASK_DEBUG', 'False') == 'True'
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
