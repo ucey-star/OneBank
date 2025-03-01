@@ -1,24 +1,16 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const app = express();
 
-// Determine the build directory
-const buildPath = path.join(__dirname, 'build');
-const distPath = path.join(__dirname, 'dist');
+// Serve static files from the React build
+app.use(express.static(path.join(__dirname, 'build')));
 
-let staticPath = fs.existsSync(buildPath) ? buildPath : distPath;
-
-// Serve static files
-app.use(express.static(staticPath));
-
-// Handle all routes
+// Handle ALL routes by returning the React app
 app.get('*', function(req, res) {
-  res.sendFile(path.join(staticPath, 'index.html'));
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Serving static files from: ${staticPath}`);
 });
