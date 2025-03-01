@@ -36,7 +36,7 @@ def create_app():
     CORS(app, resources={
         r"/*": {
             "origins": [
-                "https://onebankapp.onrender.com/",
+                "https://onebankapp.onrender.com",
                 "http://localhost:3000"  # For local development
             ]
         }
