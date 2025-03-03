@@ -92,7 +92,7 @@ export async function deleteUserCard(cardId) {
   }
 
   // Function to get card advice
-export async function getCardAdvice(merchant, amount) {
+export async function getCardAdvice(merchant, amount, source = "extension") {
     const response = await fetch(`${BASE_URL}/api/get_card_advice`, {
       method: "POST",
       credentials: "include",
@@ -102,6 +102,7 @@ export async function getCardAdvice(merchant, amount) {
       body: JSON.stringify({
         merchant,
         amount,
+        source
       }),
     });
   

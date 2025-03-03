@@ -49,7 +49,7 @@ async function checkLoginStatus() {
             throw new Error('Failed to fetch login status.');
         }
         const data = await response.json();
-        return data.is_logged_in;
+        return data.isLoggedIn;
     } catch (error) {
         console.error("Error checking authentication:", error);
         return false;

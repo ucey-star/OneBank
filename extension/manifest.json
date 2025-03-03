@@ -2,14 +2,14 @@
     "manifest_version": 3,
     "name": "Transaction Extractor",
     "version": "1.0",
-    "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest",
-    "webRequestBlocking"],
+    "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest"],
     "host_permissions": ["http://*/*", "https://*/*"], 
     "action": {
       "default_popup": "popup.html"
     },
     "background": {
-      "service_worker": "background.js"
+      "service_worker": "background.js",
+      "type": "module"
     },
     "content_scripts": [
       {

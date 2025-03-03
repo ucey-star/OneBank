@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
-from .models import User, CreditCard
+from .models import User, CreditCard, RecommendationHistory
 from .card_benefits_db import credit_cards_db
 import base64
 import os
@@ -20,7 +20,7 @@ main = Blueprint("main", __name__)
 
 @main.route("/status")
 def check_status():
-    print(current_user.is_authenticated)
+    print("user is authenticated", current_user.is_authenticated)
     if current_user.is_authenticated:
         return jsonify(isLoggedIn=True)
     else:
@@ -324,6 +324,8 @@ def get_best_card(transaction_details, user_id):
     # print(f"Credit cards: {credit_cards}")
     if not credit_cards:
         return "No credit cards available."
+    
+    source = transaction_details.get("source", None)
 
     # Prepare credit card details for AI
     cards_details = "Here are the cards and their cashback benefits: " + ", ".join(
@@ -354,6 +356,8 @@ def get_best_card(transaction_details, user_id):
         
         # Extract and return AI response
         result = completion.choices[0].message.content.strip()
+        if source != "playground":
+            log_recommendation(user_id, transaction_details, result)
         return result
     
     except Exception as e:
@@ -419,6 +423,40 @@ def get_full_card_details():
     card_details = get_full_card_details_by_type(card_type, user_id)
     
     return jsonify(card_details)
+
+@main.route('/api/recommendation-history', methods=['GET'])
+@login_required
+def get_recommendation_history():
+    """Fetch recommendation history for the logged-in user."""
+    start_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
+
+    query = RecommendationHistory.query.filter_by(user_id=current_user.id)
+
+    if start_date and end_date:
+        query = query.filter(RecommendationHistory.date.between(start_date, end_date))
+
+    history = query.order_by(RecommendationHistory.date).all()
+
+    return jsonify([
+        {
+            "date": record.date.strftime('%Y-%m-%d'),
+            "amount": record.amount,
+            "recommended_card": record.recommended_card
+        } for record in history
+    ])
+
+def log_recommendation(user_id, transaction_details, recommended_card):
+    print("this is transaction details", transaction_details)
+    new_record = RecommendationHistory(
+        user_id=user_id,
+        date=dt.datetime.utcnow(),
+        amount=transaction_details.get('amount'),
+        recommended_card=recommended_card
+    )
+    db.session.add(new_record)
+    db.session.commit()
+
 
 def pretty_print_response(response):
     print(json.dumps(response, indent=2, sort_keys=True, default=str))
