@@ -8,6 +8,7 @@ import {
   fetchUserCards,
   deleteUserCard,    // Import the delete function
 } from "../api/credit_cards";
+import { downloadExtension } from "../api/extension";
 import AddCardModal from "../components/AddCardModal"; // Import the AddCardModal component
 
 export default function Dashboard() {
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [cardToEdit, setCardToEdit] = useState(null);
+  
 
   useEffect(() => {
     async function verifyUser() {
@@ -83,6 +85,12 @@ export default function Dashboard() {
             One<span className="text-blue-600">Bank</span>
           </h1>
           <nav className="flex space-x-6">
+          <button
+              onClick={downloadExtension}
+              className="text-gray-600 hover:text-blue-600 font-medium transition"
+            >
+              Download Extension
+            </button>
             <button
               onClick={() => navigate("/playground")}
               className="text-gray-600 hover:text-blue-600 font-medium transition"
