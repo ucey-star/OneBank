@@ -6,45 +6,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     const extractionButton = document.getElementById("start-extraction");
     const statusElement = document.getElementById("plugin-status");
 
-    isLoggedIn = await checkLoginStatus();
+    // Always get latest login state from storage
+    chrome.storage.local.get(["isLoggedIn"], async (data) => {
+        const isLoggedIn = data.isLoggedIn === true; // Explicitly check for `true`
+        console.log("🔍 Retrieved isLoggedIn from storage:", isLoggedIn);
 
-    // Update button label based on login status
-    updateExtractionButton();
+        if (isLoggedIn) {
+            updateExtractionButton(true); // User is logged in
+        } else {
+            const freshStatus = await checkLoginStatus(); // Fetch fresh status
+            updateExtractionButton(freshStatus);
+            console.log("🌐 Fetched fresh login status:", freshStatus);
+        }
+    });
 
     extractionButton.addEventListener("click", async () => {
-        isLoggedIn = await checkLoginStatus();
+        chrome.storage.local.get(["isLoggedIn"], async (data) => {
+            const isLoggedIn = data.isLoggedIn === true; // Ensure boolean check
+            console.log("🛑 Checking login before extraction:", isLoggedIn);
 
-        if (!isLoggedIn) {
-            statusElement.textContent = "Please log in to extract data.";
-            showLoginForm();
-            return;
-        }
+            if (!isLoggedIn) {
+                statusElement.textContent = "Please log in to extract data.";
+                showLoginForm();
+                return;
+            }
 
-        statusElement.textContent = 'Extracting merchant details and transaction cost...';
+            statusElement.textContent = 'Extracting merchant details and transaction cost...';
 
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
-                if (response && response.merchant_name && response.transaction_amount) {
-                    statusElement.textContent = 'Data extracted. Edit if needed:';
-                    showEditableForm(response.merchant_name, response.transaction_amount);
-                } else {
-                    statusElement.textContent = 'Unable to extract details. Please enter manually.';
-                    showEditableForm("Unknown", "Unknown");
-                }
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
+                    if (response && response.merchant_name && response.transaction_amount) {
+                        statusElement.textContent = 'Data extracted. Edit if needed:';
+                        showEditableForm(response.merchant_name, response.transaction_amount);
+                    } else {
+                        statusElement.textContent = 'Unable to extract details. Please enter manually.';
+                        showEditableForm("Unknown", "Unknown");
+                    }
+                });
             });
         });
     });
 });
 
+
 // Function to update button label based on authentication
-function updateExtractionButton() {
+function updateExtractionButton(isLoggedIn) {
     const extractionButton = document.getElementById("start-extraction");
-    if (!isLoggedIn) {
-        extractionButton.textContent = "🔐 Enter Your Login Credentials from One Bank";
-    } else {
-        extractionButton.textContent = "🔍 Extract Merchant & Transaction";
+    if (!extractionButton) {
+        console.error("⚠️ Extraction button not found!");
+        return;
     }
+    console.error("ISLOGGEDIN!", isLoggedIn);
+
+    extractionButton.textContent = isLoggedIn 
+        ? "🔍 Extract Merchant & Transaction"
+        : "🔐 Enter Your Login Credentials from One Bank";
 }
+
 
 // Event listener for the "Start Extraction" button
 document.getElementById('start-extraction').addEventListener('click', async () => {
@@ -91,10 +109,19 @@ document.getElementById('open-website').addEventListener('click', () => {
 async function checkLoginStatus() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: 'checkLoginStatus' }, function(response) {
-            resolve(response.is_logged_in);
+            const isLoggedIn = response.is_logged_in === true; // Explicitly check for true
+            console.log("🔑 Received login status from background:", response.isLoggedIn);
+            //console.log("🔑 Received login status from background:", isLoggedIn);
+
+            chrome.storage.local.set({ isLoggedIn }, () => {
+                console.log("💾 Stored isLoggedIn in chrome.storage:", isLoggedIn);
+                resolve(isLoggedIn);
+            });
         });
     });
 }
+
+
 
 // Function to display an editable form with extracted or default data
 function showEditableForm(merchant, amount) {
@@ -122,19 +149,29 @@ async function handleEditedData(merchant, amount) {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
 
-    if (!isLoggedIn) {
-        isLoggedIn = await checkLoginStatus();
-        if (!isLoggedIn) {
+    chrome.storage.local.get(["isLoggedIn"], async (data) => {
+        if (!data.isLoggedIn) {
             recommendationContainer.textContent = "Please log in to view recommendations.";
             showLoginForm();
             return;
         }
+    });
+
+    // ✅ Remove currency symbols before parsing
+    let cleanedAmount = amount.replace(/[^0-9.]/g, ""); // Remove all non-numeric characters except .
+    let parsedAmount = parseFloat(cleanedAmount);
+
+    if (isNaN(parsedAmount)) {
+        console.warn("⚠️ Amount is NaN. Defaulting to 0.0");
+        parsedAmount = 0.0;
     }
 
     const data = {
         category: merchant,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
     };
+
+    console.log("🚀 Sending request to background script:", data);
 
     // Get card advice by sending a message to the background script
     chrome.runtime.sendMessage({ action: 'getCardAdvice', data }, function(response) {
@@ -217,8 +254,11 @@ function showLoginForm() {
         // Perform login by sending a message to the background script
         chrome.runtime.sendMessage({ action: 'performLogin', credentials: { email, password } }, function(response) {
             if (response.success) {
-                isLoggedIn = true;
-                document.getElementById('plugin-status').textContent = "Logged in successfully!";
+                chrome.storage.local.set({ isLoggedIn: true }, () => {
+                    updateExtractionButton(true);
+                    document.getElementById('plugin-status').textContent = "Logged in successfully!";
+                    document.getElementById('form-container').style.display = 'none';
+                });
                 // Hide the login form after successful login
                 formContainer.style.display = 'none';
             } else {

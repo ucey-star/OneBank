@@ -92,7 +92,7 @@ export default function Playground() {
     setRecommendedCard(null);
 
     try {
-      const recommendation = await getCardAdvice(merchant, amount);
+      const recommendation = await getCardAdvice(merchant, amount, "playground");
       setRecommendedCard(recommendation);
     } catch (err) {
       console.error("Failed to get recommendation:", err);

@@ -10,6 +10,7 @@ import {
 } from "../api/credit_cards";
 import { downloadExtension } from "../api/extension";
 import AddCardModal from "../components/AddCardModal"; // Import the AddCardModal component
+import RecommendationHistoryGraph from "../components/RecommendationHistoryGraph";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -219,24 +220,10 @@ export default function Dashboard() {
 
           {/* -- Recommendation History Section (Placeholder) -- */}
           <section className="mb-10">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">
-              Recommendation History
-            </h3>
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600 mb-6">
-                Track and visualize your recommended cards over time.
-              </p>
-              <div className="h-64 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-                {/* Chart placeholder */}
-                <svg
-                  className="w-16 h-16 text-gray-300"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M2 11a1 1 0 011-1h4a1 1 0 011 1v6H2v-6zm6-8a1 1 0 011-1h4a1 1 0 011 1v14h-6V3zm8 4a1 1 0 011-1h4a1 1 0 011 1v10h-6V7z" />
-                </svg>
-              </div>
+              <RecommendationHistoryGraph />
             </div>
+
           </section>
         </div>
       </main>
