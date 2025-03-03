@@ -12,11 +12,17 @@ import json
 import time
 from datetime import date, timedelta
 from openai import OpenAI
+from cryptography.fernet import Fernet
 
 ai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 main = Blueprint("main", __name__)
 
+encryption_key = os.getenv("ENCRYPTION_KEY")
+if not encryption_key:
+    raise Exception("ENCRYPTION_KEY not set in environment variables!")
+
+fernet = Fernet(encryption_key)
 
 @main.route("/status")
 def check_status():
@@ -92,25 +98,25 @@ def download_extension():
 @login_required
 def get_credit_cards():
     try:
-        # Fetch all credit cards linked to the current user
         credit_cards = CreditCard.query.filter_by(user_id=current_user.id).all()
-        
-        # Check if the user has no linked credit cards
         if not credit_cards:
             return jsonify({
                 'message': 'No credit cards found for this user.',
                 'cards': []
             }), 200
-        
-        # Prepare the list of credit cards
-        card_list = [{
-            'id': card.id,
-            'cardHolderName': card.card_holder_name,
-            'cardNumber': f"**** **** **** {card.card_number[-4:]}",
-            'expiryDate': card.expiry_date,
-            'issuer': card.issuer,
-            'cardType': card.card_type
-        } for card in credit_cards]
+
+        card_list = []
+        for card in credit_cards:
+            # Decrypt card number if you need the full value
+            decrypted_number = safe_decrypt(card.card_number)
+            card_list.append({
+                'id': card.id,
+                'cardHolderName': card.card_holder_name,
+                'cardNumber': f"**** **** **** {decrypted_number[-4:]}",
+                'expiryDate': card.expiry_date,
+                'issuer': card.issuer,
+                'cardType': card.card_type
+            })
 
         return jsonify({'cards': card_list}), 200
 
@@ -120,64 +126,59 @@ def get_credit_cards():
 
 
 
+
 @main.route('/api/add-credit-card', methods=["POST"])
 @login_required
 def add_credit_card():
-    print("Is authenticated?", current_user.is_authenticated)
-    
     if not current_user.is_authenticated:
         return jsonify({'error': 'User not authenticated'}), 401
     
     if not request.json:
         return jsonify({'error': 'Request must be JSON'}), 400
 
-    # Extract fields from JSON payload
     card_number = request.json.get('cardNumber')
     card_holder_name = request.json.get('cardHolderName')
     expiry_date = request.json.get('expiryDate')
     cvv = request.json.get('cvv')
-    issuer = request.json.get('issuer')  # New field
-    card_type = request.json.get('cardType')  # New field
+    issuer = request.json.get('issuer')
+    card_type = request.json.get('cardType')
 
-    # Validate required fields
     if not all([card_number, card_holder_name, expiry_date, cvv, issuer, card_type]):
         return jsonify({'error': 'Missing required credit card details'}), 400
 
-    # Check for duplicate card
-    existing_card = CreditCard.query.filter_by(
-        card_number=card_number,
-        user_id=current_user.id
-    ).first()
-    
+    existing_card = CreditCard.query.filter_by(card_number=card_number, user_id=current_user.id).first()
     if existing_card:
         return jsonify({'error': 'Credit card already registered'}), 409
 
-    # Create a new CreditCard instance
+    # Encrypt sensitive fields before storing
+    encrypted_card_number = encrypt_field(card_number)
+    encrypted_cvv = encrypt_field(cvv)
+
     new_card = CreditCard(
-        card_number=card_number,
+        card_number=encrypted_card_number,
         card_holder_name=card_holder_name,
         expiry_date=expiry_date,
-        cvv=cvv,
+        cvv=encrypted_cvv,
         issuer=issuer,
         card_type=card_type,
-        user_id=current_user.id  # Link the card to the logged-in user
+        user_id=current_user.id
     )
 
     db.session.add(new_card)
     db.session.commit()
 
-    # Return success message
     return jsonify({
         'message': 'Credit card added successfully',
         'card': {
-            'cardNumber': card_number,
+            # Return masked version if needed
+            'cardNumber': f"**** **** **** {card_number[-4:]}",
             'cardHolderName': card_holder_name,
             'expiryDate': expiry_date,
-            'cvv': cvv,
             'issuer': issuer,
             'cardType': card_type
         }
     }), 201
+
 
 def fetch_user_credit_cards(user_id):
     try:
@@ -186,7 +187,7 @@ def fetch_user_credit_cards(user_id):
             
             'issuer': card.issuer,
             'CardType': card.card_type,
-            'number': card.card_number,
+            'number': safe_decrypt(card.card_number),
             'cvv': card.cvv,
         } for card in credit_cards]
     except Exception as e:
@@ -391,7 +392,7 @@ def get_full_card_details_by_type(card_type, user_id):
         if card:
             return {
                 "cardHolderName": card.card_holder_name,
-                "cardNumber": card.card_number,
+                "cardNumber": safe_decrypt(card.card_number),
                 "expiryDate": card.expiry_date,
                 "cvv": card.cvv,
                 "issuer": card.issuer,
@@ -468,3 +469,17 @@ def format_error(e):
                       response.error_message, 'error_code': response.error_code, 'error_type': response.error_type}}
 
 
+def encrypt_field(data: str) -> str:
+    """Encrypt a string and return the encrypted token as a string."""
+    return fernet.encrypt(data.encode()).decode()
+
+def safe_decrypt(token: str) -> str:
+    try:
+        return decrypt_field(token)
+    except Exception as e:
+        print(f"Decryption error: {e}")
+        # Fallback: return token as-is or a masked version
+        return token  
+def decrypt_field(token: str) -> str:
+    """Decrypt an encrypted token back to a string."""
+    return fernet.decrypt(token.encode()).decode()

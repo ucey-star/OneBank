@@ -1,3 +1,4 @@
+cryptography==36.0.0
 flake8==7.1.1
 Flask==3.1.0
 Flask-Cors==5.0.0
