@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
-from .models import User, PlaidAccessToken, CreditCard
+from .models import User, CreditCard
 from .card_benefits_db import credit_cards_db
 import base64
 import os

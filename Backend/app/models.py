@@ -25,40 +25,6 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<User {}>'.format(self.email)
 
-
-class PlaidAccessToken(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    access_token = db.Column(db.String(255), nullable=False)
-    item_id = db.Column(db.String(100), nullable=True)  # Optional, to store Plaid’s item ID
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    user = db.relationship('User', backref=db.backref('plaid_access_tokens', lazy='dynamic'))
-
-
-class Account(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    account_number = db.Column(db.String(20), unique=True, nullable=False)
-    account_type = db.Column(db.String(50), nullable=False)  # e.g., checking, savings
-    balance = db.Column(db.Float, default=0.0)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-    transactions = db.relationship('Transaction', backref='account', lazy='dynamic')
-
-    def __repr__(self):
-        return '<Account {}>'.format(self.account_number)
-
-
-class Transaction(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
-    amount = db.Column(db.Float)
-    transaction_type = db.Column(db.String(50))  # e.g., deposit, withdrawal, transfer
-    description = db.Column(db.String(200))
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
-
-    def __repr__(self):
-        return '<Transaction {}>'.format(self.id)
-
-
 class CreditCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     card_number = db.Column(db.String(20), unique=True, nullable=False)
