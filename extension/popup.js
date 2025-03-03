@@ -2,10 +2,49 @@
 
 let isLoggedIn = false; // Cache to track login state
 
-// Check login status on extension load
 document.addEventListener("DOMContentLoaded", async () => {
+    const extractionButton = document.getElementById("start-extraction");
+    const statusElement = document.getElementById("plugin-status");
+
     isLoggedIn = await checkLoginStatus();
+
+    // Update button label based on login status
+    updateExtractionButton();
+
+    extractionButton.addEventListener("click", async () => {
+        isLoggedIn = await checkLoginStatus();
+
+        if (!isLoggedIn) {
+            statusElement.textContent = "Please log in to extract data.";
+            showLoginForm();
+            return;
+        }
+
+        statusElement.textContent = 'Extracting merchant details and transaction cost...';
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
+                if (response && response.merchant_name && response.transaction_amount) {
+                    statusElement.textContent = 'Data extracted. Edit if needed:';
+                    showEditableForm(response.merchant_name, response.transaction_amount);
+                } else {
+                    statusElement.textContent = 'Unable to extract details. Please enter manually.';
+                    showEditableForm("Unknown", "Unknown");
+                }
+            });
+        });
+    });
 });
+
+// Function to update button label based on authentication
+function updateExtractionButton() {
+    const extractionButton = document.getElementById("start-extraction");
+    if (!isLoggedIn) {
+        extractionButton.textContent = "🔐 Enter Your Login Credentials from One Bank";
+    } else {
+        extractionButton.textContent = "🔍 Extract Merchant & Transaction";
+    }
+}
 
 // Event listener for the "Start Extraction" button
 document.getElementById('start-extraction').addEventListener('click', async () => {
