@@ -195,3 +195,210 @@ button {
     font-size: 0.9rem;
   }
 }
+
+/* Editable Form Container */
+.edit-form {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Group Spacing */
+.edit-form .form-group {
+  margin-bottom: 15px;
+}
+
+/* Form Labels */
+.edit-form .form-label {
+  display: block;
+  font-size: 0.95rem;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+/* Form Inputs & Selects */
+.edit-form .form-input,
+.edit-form .form-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border 0.3s ease;
+}
+
+.edit-form .form-input:focus,
+.edit-form .form-select:focus {
+  border-color: #0b2447;
+  outline: none;
+}
+
+/* Submit Button */
+.edit-form .btn-submit {
+  width: 100%;
+  background: #0b2447;
+  color: #ffffff;
+  border: none;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.edit-form .btn-submit:hover {
+  background: #0d355c;
+}
+
+/* ===== Reward Warning Container ===== */
+.reward-warning {
+  background: #fff9db;               /* Soft yellow background */
+  border: 2px dashed #f4d03f;       /* Dashed border to draw attention */
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: center;
+  position: relative;
+  animation: bounceIn 0.6s ease forwards; /* The bounce-in animation */
+}
+
+/* Optional heading style for emphasis */
+.warning-heading {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  color: #d35400; /* A bold orange color */
+}
+
+/* Paragraph styling inside the warning box */
+.reward-warning p {
+  font-size: 0.95rem;
+  color: #333;
+  margin: 0.5rem 0;
+}
+
+/* Button container */
+.warning-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+/* Buttons */
+.btn-update,
+.btn-proceed {
+  background-color: #0b2447;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+/* Hover effect for buttons */
+.btn-update:hover,
+.btn-proceed:hover {
+  background-color: #0d355c;
+  transform: translateY(-2px);
+}
+
+/* ===== Keyframes for Bounce-In Animation ===== */
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ===== LOGIN FORM STYLES ===== */
+
+/* Container for the login form */
+.login-form {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 0.5s ease forwards; /* Subtle animation */
+}
+
+/* Heading at the top of the form */
+.login-heading {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+  text-align: center;
+}
+
+/* Group each label + input pair */
+.login-group {
+  margin-bottom: 1rem;
+}
+
+/* Labels */
+.login-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Input fields */
+.login-input {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border 0.3s ease;
+}
+
+.login-input:focus {
+  border-color: #0b2447; /* Highlight border on focus */
+  outline: none;
+}
+
+/* Login button */
+.login-button {
+  display: block;
+  width: 100%;
+  background: #0b2447;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.login-button:hover {
+  background: #0d355c;
+  transform: translateY(-2px);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
