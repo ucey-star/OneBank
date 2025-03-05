@@ -1,6 +1,10 @@
 // At the top of background.js
 import { API_URL } from './config.js';
 
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error(error));
+
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     if (message.action === 'checkLoginStatus') {
         checkLoginStatus().then(status => {

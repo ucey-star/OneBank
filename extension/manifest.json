@@ -1,12 +1,13 @@
 {
     "manifest_version": 3,
-    "name": "Transaction Extractor",
+    "name": "One Bank",
     "version": "1.0",
-    "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest"],
+    "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest", "sidePanel"],
     "host_permissions": ["http://*/*", "https://*/*"], 
-    "action": {
-      "default_popup": "popup.html"
-    },
+    "default_title": "Open One Bank Sidebar",
+    "side_panel": {
+    "default_path": "sidebar.html"
+  },
     "background": {
       "service_worker": "background.js",
       "type": "module"
