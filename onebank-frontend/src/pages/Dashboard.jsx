@@ -9,8 +9,10 @@ import {
   deleteUserCard,    // Import the delete function
 } from "../api/credit_cards";
 import { downloadExtension } from "../api/extension";
+import { toast } from "react-toastify";
 import AddCardModal from "../components/AddCardModal"; // Import the AddCardModal component
 import RecommendationHistoryGraph from "../components/RecommendationHistoryGraph";
+import DeleteCardModal from "../components/DeleteCardModal";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -21,6 +23,8 @@ export default function Dashboard() {
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [cardToEdit, setCardToEdit] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState(null);
   
 
   useEffect(() => {
@@ -74,6 +78,31 @@ export default function Dashboard() {
   // If auth fails, we redirect, so no need to render
   if (!isAuthed) {
     return null;
+  }
+
+  function promptDeleteCard(cardId) {
+    setCardToDelete(cardId);
+    setShowDeleteModal(true);
+  }
+
+  // Called when user confirms deletion from the modal
+  async function confirmDeleteCard(cardId) {
+    try {
+      await deleteUserCard(cardId);
+      loadUserCards();
+      toast.success("Card deleted successfully.");
+    } catch (err) {
+      console.error("Failed to delete card:", err);
+      toast.error("Failed to delete card.");
+    }
+    setShowDeleteModal(false);
+    setCardToDelete(null);
+  }
+
+  // Called when user cancels deletion
+  function cancelDeleteCard() {
+    setShowDeleteModal(false);
+    setCardToDelete(null);
   }
 
   // --- Dashboard Layout ---
@@ -194,7 +223,7 @@ export default function Dashboard() {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDeleteCard(card.id)}
+                        onClick={() => promptDeleteCard(card.id)}
                         className="text-white hover:text-gray-200"
                       >
                         <svg
@@ -244,6 +273,14 @@ export default function Dashboard() {
           mode={modalMode}
         />
       )}
+
+      {showDeleteModal && (
+              <DeleteCardModal
+                cardId={cardToDelete}
+                onConfirm={confirmDeleteCard}
+                onCancel={cancelDeleteCard}
+              />
+            )}
     </div>
   );
 
@@ -252,8 +289,10 @@ export default function Dashboard() {
   async function handleLogout() {
     try {
       await logoutUser(); // calls your /logout
+      toast.success("Logged out successfully.");
       navigate("/login");
     } catch (err) {
+      toast.error("Failed to log out")
       console.error("Failed to log out:", err);
     }
   }
@@ -263,6 +302,7 @@ export default function Dashboard() {
     loadUserCards();
     setIsCardModalOpen(false);
     setCardToEdit(null);
+    toast.success("Card saved successfully.");
   }
 
   function handleEditCard(card) {
@@ -271,15 +311,5 @@ export default function Dashboard() {
     setIsCardModalOpen(true);
   }
 
-  async function handleDeleteCard(cardId) {
-    if (window.confirm("Are you sure you want to delete this card?")) {
-      try {
-        await deleteUserCard(cardId);
-        loadUserCards();
-      } catch (err) {
-        console.error("Failed to delete card:", err);
-        // Optionally, display an error message to the user
-      }
-    }
-  }
+
 }

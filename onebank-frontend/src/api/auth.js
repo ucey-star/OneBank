@@ -29,7 +29,12 @@ export async function registerUser(firstName, lastName, email, password) {
         password,
       }),
     });
-  
+    
+    // If email already exists, the backend returns a 409
+    if (response.status === 409) {
+      throw new Error("Email already exists. Please log in or use a different email address.");
+    }
+    
     if (!response.ok) {
       // The backend returns a 409 if the email is already in use
       throw new Error("Signup failed. Email might already exist.");
