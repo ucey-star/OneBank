@@ -1,4 +1,4 @@
-// popup.js
+// sidebar.js
 
 let isLoggedIn = false; // Cache to track login state
 

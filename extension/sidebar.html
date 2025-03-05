@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>One Bank</title>
+  <meta charset="UTF-8" />
+  <!-- Your existing script -->
+  <script src="sidebar.js" defer></script>
+  <!-- Link to the updated stylesheet below -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="sidebar-container">
+    <!-- Header -->
+    <header class="sidebar-header">
+      <div class="header-content">
+        <!-- Logo/Icon -->
+        <div class="logo">
+          <span class="logo-icon">🏦</span>
+        </div>
+        <h1 class="title">One Bank</h1>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="sidebar-main">
+      <!-- Status Section -->
+      <section class="status-section">
+        <div id="plugin-status" class="status-badge">
+          Status: Waiting for action...
+        </div>
+      </section>
+
+      <!-- "Add more cards" Button -->
+      <button id="open-website" class="website-button">
+        <span class="button-icon">➕</span> Add more cards
+      </button>
+
+      <!-- Intro Text -->
+      <p class="intro-text">
+        Seamless transaction insights at your fingertips. <br>
+        Click below to start analyzing merchant and transaction data.
+      </p>
+
+      <!-- Extract Button -->
+      <button id="start-extraction" class="action-button">
+        <span class="button-icon">🔍</span> Extract Merchant & Transaction
+      </button>
+
+      <!-- Form Container -->
+      <div id="form-container" class="form-area" style="display:none;"></div>
+
+      <!-- Recommendation Container -->
+      <div id="recommendation-container" class="recommendation-area" style="display:none;"></div>
+    </main>
+  </div>
+</body>
+</html>
