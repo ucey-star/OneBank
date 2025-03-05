@@ -218,6 +218,64 @@ def update_credit_card(card_id):
         print(f"Error updating credit card: {e}")
         return jsonify({'error': 'Failed to update credit card'}), 500
 
+@main.route('/api/check_reward_type', methods=['POST'])
+@login_required
+def check_reward_type():
+    data = request.get_json()
+    merchant = data.get('merchant', 'Unknown Merchant')
+    amount = data.get('amount', 0)
+    reward_type = data.get('rewardType', 'cashback')
+
+    # Strict prompt forcing the AI to produce the correct JSON structure
+    prompt = (
+        f"Determine whether the selected reward type '{reward_type}' is optimal for a purchase at "
+        f"'{merchant}' amounting to ${amount}.\n\n"
+        "You MUST return valid JSON with EXACTLY these two fields:\n"
+        "1) \"isSuitable\": a boolean (true or false)\n"
+        "2) \"suggestedRewardType\": a string.\n\n"
+        "If the reward type is suitable, set \"isSuitable\": true and \"suggestedRewardType\" to the same reward type.\n"
+        "If the reward type is not suitable, set \"isSuitable\": false and \"suggestedRewardType\" to a better reward type.\n"
+        "Return no extra text—only JSON."
+    )
+
+    try:
+        completion = ai_client.chat.completions.create(
+            model="gpt-4",  # or your chosen model
+            messages=[
+                {"role": "system", "content": "You are an expert in evaluating reward types for transactions."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150
+        )
+        response_content = completion.choices[0].message.content.strip()
+        
+        # Attempt to parse the AI's response
+        try:
+            result = json.loads(response_content)
+        except json.JSONDecodeError:
+            # If it's invalid JSON, return an error
+            return jsonify({"error": "Invalid response from AI", "response": response_content}), 500
+        
+        # ===== Server-Side Validation & Fallbacks =====
+        # Ensure the AI returned both keys
+        if "isSuitable" not in result or "suggestedRewardType" not in result:
+            return jsonify({"error": "Missing required fields", "response": result}), 500
+
+        # If isSuitable is not a boolean, fallback
+        if not isinstance(result["isSuitable"], bool):
+            result["isSuitable"] = False
+
+        # If suggestedRewardType is missing or empty, fallback
+        if not isinstance(result["suggestedRewardType"], str) or not result["suggestedRewardType"]:
+            result["suggestedRewardType"] = "cashback"
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Failed to check reward type with AI: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @main.route('/api/delete_card/<int:card_id>', methods=['DELETE'])
 @login_required
 def delete_card(card_id):

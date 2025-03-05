@@ -127,12 +127,24 @@ async function checkLoginStatus() {
 function showEditableForm(merchant, amount) {
     const formContainer = document.getElementById('form-container');
     formContainer.innerHTML = `
-        <form id="edit-form">
-            <label for="merchant-input">Merchant:</label><br>
-            <input type="text" id="merchant-input" name="merchant" value="${merchant}"><br><br>
-            <label for="amount-input">Amount:</label><br>
-            <input type="text" id="amount-input" name="amount" value="${amount}"><br><br>
-            <button id="submit-edits" type="button">Submit</button>
+        <form id="edit-form" class="edit-form">
+            <div class="form-group">
+                <label for="merchant-input" class="form-label">Merchant:</label>
+                <input type="text" id="merchant-input" name="merchant" value="${merchant}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="amount-input" class="form-label">Amount:</label>
+                <input type="text" id="amount-input" name="amount" value="${amount}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="reward-type" class="form-label">Select Reward Type:</label>
+                <select id="reward-type" name="reward-type" class="form-select">
+                    <option value="cashback">Cashback</option>
+                    <option value="mileage">Mileage Points</option>
+                    <option value="reward">Reward Points</option>
+                </select>
+            </div>
+            <button id="submit-edits" type="button" class="btn-submit">Submit</button>
         </form>
     `;
     formContainer.style.display = 'block';
@@ -140,12 +152,73 @@ function showEditableForm(merchant, amount) {
     document.getElementById('submit-edits').addEventListener('click', () => {
         const editedMerchant = document.getElementById('merchant-input').value;
         const editedAmount = document.getElementById('amount-input').value;
-        handleEditedData(editedMerchant, editedAmount);
+        const rewardType = document.getElementById('reward-type').value;
+        // Instead of immediately calling handleEditedDataWithReward,
+        // first check whether the reward type is suitable.
+        handleRewardCheck(editedMerchant, editedAmount, rewardType);
     });
 }
 
+function handleRewardCheck(merchant, amount, rewardType) {
+    const data = { merchant, amount, rewardType };
+    // Adjust API_URL if necessary
+    fetch(`http://127.0.0.1:5000/api/check_reward_type`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.isSuitable) {
+            // If the reward type is suitable, continue with analysis
+            handleEditedDataWithReward(merchant, amount, rewardType);
+        } else {
+            // Otherwise, show a warning with the suggested reward type
+            showRewardWarning(response.suggestedRewardType, merchant, amount, rewardType);
+        }
+    })
+    .catch(err => {
+        console.error("Error checking reward type:", err);
+        // In case of error, you may decide to proceed anyway
+        handleEditedDataWithReward(merchant, amount, rewardType);
+    });
+}
+
+function showRewardWarning(suggestedReward, merchant, amount, currentReward) {
+    const formContainer = document.getElementById('form-container');
+    formContainer.innerHTML = `
+        <div class="reward-warning">
+            <h3 class="warning-heading">⚠️ Heads Up!</h3>
+            <p>Your selected reward type ("${currentReward}") may not be optimal for ${merchant}.</p>
+            <p>We suggest using "<strong>${suggestedReward}</strong>" instead.</p>
+            <p>You can either update your selection or proceed with your current choice.</p>
+            <div class="warning-buttons">
+                <button id="update-reward" class="btn-update">Update Selection</button>
+                <button id="proceed-anyway" class="btn-proceed">Proceed Anyway</button>
+            </div>
+        </div>
+    `;
+    formContainer.style.display = 'block';
+
+    document.getElementById('update-reward').addEventListener('click', () => {
+        showEditableForm(merchant, amount);
+    });
+
+    document.getElementById('proceed-anyway').addEventListener('click', () => {
+        // 1. Clear the container's content
+        formContainer.innerHTML = '';
+        // 2. Hide the container completely (no leftover space)
+        formContainer.style.display = 'none';
+
+        // Continue with the analysis
+        handleEditedDataWithReward(merchant, amount, currentReward);
+    });
+}
+
+
 // Function to handle the data after the user edits or confirms it
-async function handleEditedData(merchant, amount) {
+async function handleEditedDataWithReward(merchant, amount, rewardType) {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
 
@@ -157,18 +230,19 @@ async function handleEditedData(merchant, amount) {
         }
     });
 
-    // ✅ Remove currency symbols before parsing
-    let cleanedAmount = amount.replace(/[^0-9.]/g, ""); // Remove all non-numeric characters except .
+    // Remove non-numeric characters from amount
+    let cleanedAmount = amount.replace(/[^0-9.]/g, "");
     let parsedAmount = parseFloat(cleanedAmount);
-
     if (isNaN(parsedAmount)) {
         console.warn("⚠️ Amount is NaN. Defaulting to 0.0");
         parsedAmount = 0.0;
     }
 
+    // Prepare the data object including the reward type
     const data = {
         category: merchant,
         amount: parsedAmount,
+        rewardType: rewardType
     };
 
     console.log("🚀 Sending request to background script:", data);
@@ -182,11 +256,10 @@ async function handleEditedData(merchant, amount) {
         }
 
         const cardResult = response.result;
-        // Update the recommendation container with the recommended card
         recommendationContainer.textContent = `Recommended Card: ${cardResult.recommended_card}`;
         const cardType = cardResult.recommended_card;
 
-        // Now fetch full card details
+        // Fetch full card details based on the recommended card type
         chrome.runtime.sendMessage({ action: 'getFullCardDetails', cardType }, function(response) {
             if (response.error) {
                 console.error("Error fetching full card details:", response.error);
@@ -195,8 +268,7 @@ async function handleEditedData(merchant, amount) {
             }
 
             const fullCardDetails = response.result;
-
-            // Display full card details
+            // Display the full card details
             recommendationContainer.innerHTML = `
                 <h3>Recommended Card Details:</h3>
                 <p><strong>Card Holder:</strong> ${fullCardDetails.cardHolderName}</p>
@@ -233,16 +305,22 @@ async function handleEditedData(merchant, amount) {
     });
 }
 
+
 // Function to display the login form
 function showLoginForm() {
     const formContainer = document.getElementById('form-container');
     formContainer.innerHTML = `
-        <form id="login-form">
-            <label for="email-input">Email:</label><br>
-            <input type="email" id="email-input" name="email" required><br><br>
-            <label for="password-input">Password:</label><br>
-            <input type="password" id="password-input" name="password" required><br><br>
-            <button id="login-submit" type="button">Login</button>
+        <form id="login-form" class="login-form">
+            <h3 class="login-heading">Log In</h3>
+            <div class="login-group">
+                <label for="email-input" class="login-label">Email</label>
+                <input type="email" id="email-input" name="email" class="login-input" required>
+            </div>
+            <div class="login-group">
+                <label for="password-input" class="login-label">Password</label>
+                <input type="password" id="password-input" name="password" class="login-input" required>
+            </div>
+            <button id="login-submit" type="button" class="login-button">Login</button>
         </form>
     `;
     formContainer.style.display = 'block';
@@ -267,6 +345,7 @@ function showLoginForm() {
         });
     });
 }
+
 
 // Function to copy text to the clipboard
 function copyToClipboard(text) {
