@@ -4,7 +4,6 @@
     "version": "1.0",
     "permissions": ["activeTab", "scripting", "storage", "cookies", "webRequest", "sidePanel"],
     "host_permissions": ["http://*/*", "https://*/*"], 
-    "default_title": "Open One Bank Sidebar",
     "side_panel": {
     "default_path": "sidebar.html"
   },
