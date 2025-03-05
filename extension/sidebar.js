@@ -101,7 +101,7 @@ document.getElementById('start-extraction').addEventListener('click', async () =
 
 // Event listener for the "Open Website" button
 document.getElementById('open-website').addEventListener('click', () => {
-    const websiteUrl = 'http://localhost:3000'; // Replace with your website URL
+    const websiteUrl = 'https://onebankapp.onrender.com'; // Replace with your website URL
     chrome.tabs.create({ url: websiteUrl });
 });
 
