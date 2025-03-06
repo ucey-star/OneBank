@@ -86,7 +86,7 @@ async function performLogin(credentials) {
 // Function to get card advice from the backend
 async function getCardAdvice(data) {
     try {
-        const response = await fetch(`${API_URL}/api/get_card_advice`, {
+        const response = await fetch(`${API_URL}/api/analyze_rewards`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

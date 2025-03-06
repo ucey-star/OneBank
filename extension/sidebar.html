@@ -4,6 +4,8 @@
   <title>One Bank</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="sidebar.js" defer></script>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -49,7 +51,10 @@
       <div id="form-container" class="form-area" style="display:none;"></div>
 
       <!-- Recommendation Container -->
-      <div id="recommendation-container" class="recommendation-area" style="display:none;"></div>
+      <div id="recommendation-container" class="recommendation-area" style="display:none;">
+        <!-- Canvas element for the bar chart -->
+        <canvas id="myChart"></canvas>
+      </div>
     </main>
   </div>
 </body>

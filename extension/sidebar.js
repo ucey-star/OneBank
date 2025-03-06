@@ -217,7 +217,6 @@ function showRewardWarning(suggestedReward, merchant, amount, currentReward) {
 }
 
 
-// Function to handle the data after the user edits or confirms it
 async function handleEditedDataWithReward(merchant, amount, rewardType) {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
@@ -230,7 +229,7 @@ async function handleEditedDataWithReward(merchant, amount, rewardType) {
         }
     });
 
-    // Remove non-numeric characters from amount
+    // Clean and parse the amount value
     let cleanedAmount = amount.replace(/[^0-9.]/g, "");
     let parsedAmount = parseFloat(cleanedAmount);
     if (isNaN(parsedAmount)) {
@@ -238,72 +237,131 @@ async function handleEditedDataWithReward(merchant, amount, rewardType) {
         parsedAmount = 0.0;
     }
 
-    // Prepare the data object including the reward type
-    const data = {
+    // Prepare the request data
+    const reqData = {
         category: merchant,
         amount: parsedAmount,
         rewardType: rewardType
     };
 
-    console.log("🚀 Sending request to background script:", data);
+    console.log("🚀 Sending request to analyze rewards:", reqData);
 
-    // Get card advice by sending a message to the background script
-    chrome.runtime.sendMessage({ action: 'getCardAdvice', data }, function(response) {
+    // Call your new analyze_rewards endpoint via background.js (using getCardAdvice action)
+    chrome.runtime.sendMessage({ action: 'getCardAdvice', data: reqData }, function(response) {
         if (response.error) {
-            console.error("Error fetching card advice:", response.error);
+            console.error("Error fetching reward analysis:", response.error);
             recommendationContainer.textContent = "An error occurred while fetching recommendations.";
             return;
         }
 
-        const cardResult = response.result;
-        recommendationContainer.textContent = `Recommended Card: ${cardResult.recommended_card}`;
-        const cardType = cardResult.recommended_card;
+        const analysis = response.result; // Expected: { barData, explanation, recommendedCard }
 
-        // Fetch full card details based on the recommended card type
-        chrome.runtime.sendMessage({ action: 'getFullCardDetails', cardType }, function(response) {
-            if (response.error) {
-                console.error("Error fetching full card details:", response.error);
-                recommendationContainer.textContent = "An error occurred while fetching card details.";
-                return;
-            }
+        // Clear previous contents
+        recommendationContainer.innerHTML = "";
+        recommendationContainer.style.display = 'none'; // Temporarily hide
 
-            const fullCardDetails = response.result;
-            // Display the full card details
-            recommendationContainer.innerHTML = `
-                <h3>Recommended Card Details:</h3>
-                <p><strong>Card Holder:</strong> ${fullCardDetails.cardHolderName}</p>
-                <p>
-                    <strong>Card Number:</strong>
-                    <span id="cardNumber" class="blurred">${fullCardDetails.cardNumber}</span>
-                    <button id="copyCardNumber">📋</button>
-                </p>
-                <p>
-                    <strong>Expiry Date:</strong>
-                    <span id="expiryDate" class="blurred">${fullCardDetails.expiryDate}</span>
-                    <button id="copyExpiryDate">📋</button>
-                </p>
-                <p>
-                    <strong>CVV:</strong>
-                    <span id="cvv" class="blurred">${fullCardDetails.cvv}</span>
-                    <button id="copyCVV">📋</button>
-                </p>
-                <p><strong>Issuer:</strong> ${fullCardDetails.issuer}</p>
-                <p><strong>Card Type:</strong> ${fullCardDetails.cardType}</p>
-            `;
+        // 1. Render the table inside a card
+        renderTable(analysis.barData);
 
-            // Add event listeners for copy buttons
-            document.getElementById('copyCardNumber').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.cardNumber);
-            });
-            document.getElementById('copyExpiryDate').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.expiryDate);
-            });
-            document.getElementById('copyCVV').addEventListener('click', () => {
-                copyToClipboard(fullCardDetails.cvv);
-            });
-        });
+        // 2. Render the explanation in a separate card
+        const explanationCard = document.createElement("div");
+        explanationCard.classList.add("analysis-card");
+        explanationCard.innerHTML = `
+            <h4>Analysis Explanation:</h4>
+            <p class="analysis-explanation">${analysis.explanation}</p>
+            <p><strong>Recommended Card:</strong> ${analysis.recommendedCard || "None"}</p>
+        `;
+        recommendationContainer.appendChild(explanationCard);
+
+        // Show the container again
+        recommendationContainer.style.display = 'block';
     });
 }
+
+function renderTable(barData) {
+    const container = document.getElementById('recommendation-container');
+  
+    const cardDiv = document.createElement("div");
+    cardDiv.classList.add("analysis-card");
+  
+    const table = document.createElement("table");
+    table.classList.add("analysis-table");
+  
+    // Create header row
+    const headerRow = document.createElement("tr");
+  
+    // Card Name (standard horizontal header)
+    const cardNameTH = document.createElement("th");
+    cardNameTH.textContent = "Card Name";
+    headerRow.appendChild(cardNameTH);
+  
+    // Cashback (vertical header)
+    const cashbackTH = document.createElement("th");
+    cashbackTH.classList.add("vertical-header");
+    cashbackTH.textContent = "Cashback (%)";
+    headerRow.appendChild(cashbackTH);
+  
+    // Mileage (vertical header)
+    const mileageTH = document.createElement("th");
+    mileageTH.classList.add("vertical-header");
+    mileageTH.textContent = "Mileage (%)";
+    headerRow.appendChild(mileageTH);
+  
+    // Points (vertical header)
+    const pointsTH = document.createElement("th");
+    pointsTH.classList.add("vertical-header");
+    pointsTH.textContent = "Points (%)";
+    headerRow.appendChild(pointsTH);
+  
+    table.appendChild(headerRow);
+  
+    // Data rows
+    barData.forEach(item => {
+      const row = document.createElement("tr");
+  
+      // Card Name
+      const cardCell = document.createElement("td");
+      cardCell.textContent = item.cardName;
+      row.appendChild(cardCell);
+  
+      // Cashback
+      const cashbackCell = document.createElement("td");
+      cashbackCell.textContent = formatValue(item.cashbackReturn);
+      row.appendChild(cashbackCell);
+  
+      // Mileage
+      const mileageCell = document.createElement("td");
+      mileageCell.textContent = formatValue(item.mileageReturn);
+      row.appendChild(mileageCell);
+  
+      // Points
+      const pointsCell = document.createElement("td");
+      pointsCell.textContent = formatValue(item.pointsReturn);
+      row.appendChild(pointsCell);
+  
+      table.appendChild(row);
+    });
+  
+    cardDiv.appendChild(table);
+    container.appendChild(cardDiv);
+  }
+  
+
+/**
+ * Returns a string like "2.8%" or "0.0%" or "N/A" depending on the value.
+ */
+function formatValue(value) {
+  if (value == null || isNaN(value)) {
+    return "N/A";
+  }
+  if (value <= 0) {
+    return "0.0%";
+  }
+  // Round to 1 decimal place
+  const displayValue = (Math.round(value * 10) / 10).toFixed(1);
+  return displayValue + "%";
+}
+
 
 
 // Function to display the login form

@@ -275,6 +275,90 @@ def check_reward_type():
         print(f"Failed to check reward type with AI: {e}")
         return jsonify({"error": str(e)}), 500
 
+@main.route('/api/analyze_rewards', methods=['POST'])
+@login_required
+def analyze_rewards():
+    data = request.get_json()
+    merchant = data.get('merchant', 'Unknown Merchant')
+    amount = data.get('amount', 0.0)
+    selected_reward_type = data.get('rewardType', 'cashback')
+    user_id = current_user.id
+    user_cards = fetch_user_credit_cards(user_id)
+    
+    if not user_cards:
+        return jsonify({
+            "barData": [],
+            "explanation": "No credit cards available for analysis.",
+            "recommendedCard": None
+        }), 200
+
+    bar_data = []
+    explanation_lines = []
+    best_card_for_selected = None
+    best_return_for_selected = 0.0
+
+    # Example mapping for merchant category may be added later
+    # For now, we assume the selected reward type applies across cards.
+    for card in user_cards:
+        issuer = card["issuer"]
+        card_type = card["CardType"]
+        issuer_dict = credit_cards_db.get(issuer, {})
+        card_info = issuer_dict.get(card_type, {})
+        rewards_dict = card_info.get("Rewards", {})
+        
+        # Simple heuristics to determine returns (naive parsing)
+        cashback_return = 0.0
+        mileage_return = 0.0
+        points_return = 0.0
+        
+        reward_text = json.dumps(rewards_dict).lower()
+        if "cash back" in reward_text:
+            try:
+                cashback_return = float([s for s in reward_text.split() if "%" in s][0].replace("%", ""))
+            except Exception:
+                cashback_return = 1.0
+        if "miles" in reward_text:
+            mileage_return = 2.8  # naive default
+        if "points" in reward_text:
+            if "2x points" in reward_text:
+                points_return = 2.4
+            elif "3x points" in reward_text:
+                points_return = 3.6
+            else:
+                points_return = 1.2
+
+        card_entry = {
+            "cardName": f"{issuer} {card_type}",
+            "cashbackReturn": cashback_return,
+            "mileageReturn": mileage_return,
+            "pointsReturn": points_return
+        }
+        bar_data.append(card_entry)
+
+        # Choose best card based on selected reward type
+        if selected_reward_type == "cashback" and cashback_return > best_return_for_selected:
+            best_return_for_selected = cashback_return
+            best_card_for_selected = card_entry["cardName"]
+        elif selected_reward_type == "mileage" and mileage_return > best_return_for_selected:
+            best_return_for_selected = mileage_return
+            best_card_for_selected = card_entry["cardName"]
+        elif selected_reward_type == "reward" and points_return > best_return_for_selected:
+            best_return_for_selected = points_return
+            best_card_for_selected = card_entry["cardName"]
+
+    explanation_lines.append(f"Analyzed {len(user_cards)} cards for a transaction at '{merchant}' with amount ${amount}.")
+    explanation_lines.append(f"Selected reward type: {selected_reward_type}.")
+    if best_card_for_selected:
+        explanation_lines.append(f"The best card for this reward type is: {best_card_for_selected} with an estimated return of {best_return_for_selected}%.")
+    else:
+        explanation_lines.append("None of your cards provided a distinct benefit for the selected reward type.")
+
+    explanation_text = "\n".join(explanation_lines)
+    return jsonify({
+        "barData": bar_data,
+        "explanation": explanation_text,
+        "recommendedCard": best_card_for_selected
+    }), 200
 
 @main.route('/api/delete_card/<int:card_id>', methods=['DELETE'])
 @login_required
