@@ -402,3 +402,115 @@ button {
     transform: translateY(0);
   }
 }
+
+.analysis-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed; /* So columns don't expand too much */
+}
+
+.analysis-table th,
+.analysis-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+  white-space: nowrap; /* or normal if you want multiline wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* show "..." if too long */
+}
+
+.analysis-table th {
+  background-color: #0b2447;
+  color: #fff;
+  font-weight: bold;
+}
+
+.analysis-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.analysis-table tr:hover {
+  background-color: #ddd;
+}
+
+/* Force the first column to be narrower so it doesn't dominate the table */
+.analysis-table th:nth-child(1),
+.analysis-table td:nth-child(1) {
+  width: 80px;               /* Adjust as desired (e.g. 60px, 100px, etc.) */
+  white-space: normal;       /* Let text wrap onto multiple lines */
+  word-wrap: break-word;     /* Break words if no spaces are found */
+  overflow-wrap: break-word; /* Additional fallback for modern browsers */
+}
+
+/* Explanation text styling */
+.analysis-explanation {
+  white-space: pre-wrap; /* preserve line breaks in the explanation */
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #333;
+}
+/* Style for the analysis text below the table */
+.analysis-text {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: #333;
+}
+/* Container for each bar */
+.bar-container {
+  position: relative;
+  background-color: #f2f2f2;
+  height: 20px;
+  width: 80px; /* You can adjust this width */
+  margin: 0 auto; /* Center horizontally in the cell */
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* The filled portion of the bar */
+.bar-fill {
+  background-color: #0b2447; /* Dark navy color */
+  height: 100%;
+  transition: width 0.4s ease; /* Smooth fill animation */
+}
+
+/* Text displayed on top of the bar */
+.bar-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 0 2px rgba(0,0,0,0.3); /* slight shadow for readability */
+}
+
+/* A card-like container for the analysis table */
+.analysis-card {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: auto; /* allow horizontal scroll if needed */
+  max-width: 100%;
+}
+
+.analysis-table td, .analysis-table th {
+  white-space: nowrap; /* or normal, depending on preference */
+  word-wrap: break-word;
+}
+
+.vertical-header {
+  width: 30px; 
+  white-space: nowrap;
+  writing-mode: vertical-lr;
+  text-align: center;
+  vertical-align: middle;
+  padding: 4px;
+}
