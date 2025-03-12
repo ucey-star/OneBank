@@ -4,8 +4,6 @@
   <title>One Bank</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Include Chart.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="sidebar.js" defer></script>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,11 +13,16 @@
     <header class="sidebar-header">
       <div class="header-content">
         <!-- Logo/Icon -->
-        <div class="logo">
-          <span class="logo-icon">🏦</span>
-        </div>
-        <h1 class="title">One Bank</h1>
-      </div>
+        <div class="left-header">
+            <div class="logo">
+              <span class="logo-icon">🏦</span>
+            </div>
+            <h1 class="title">One Bank</h1>
+          </div>
+      
+      <!-- Logout Button (hidden by default) -->
+      <button id="logout-button" class="logout-button"  style="display:none;">Logout</button>
+    </div>
     </header>
 
     <!-- Main Content Area -->
@@ -52,7 +55,7 @@
 
       <!-- Recommendation Container -->
       <div id="recommendation-container" class="recommendation-area" style="display:none;">
-        <!-- Canvas element for the bar chart -->
+        <!-- Canvas element for the bar chart (if needed) -->
         <canvas id="myChart"></canvas>
       </div>
     </main>

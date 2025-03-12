@@ -5,19 +5,46 @@ let isLoggedIn = false; // Cache to track login state
 document.addEventListener("DOMContentLoaded", async () => {
     const extractionButton = document.getElementById("start-extraction");
     const statusElement = document.getElementById("plugin-status");
+    const logoutButton = document.getElementById("logout-button");
 
     // Always get latest login state from storage
+    // Get the login state from Chrome storage
     chrome.storage.local.get(["isLoggedIn"], async (data) => {
-        const isLoggedIn = data.isLoggedIn === true; // Explicitly check for `true`
+        // Update the global variable
+        isLoggedIn = data.isLoggedIn === true;
         console.log("🔍 Retrieved isLoggedIn from storage:", isLoggedIn);
 
-        if (isLoggedIn) {
-            updateExtractionButton(true); // User is logged in
-        } else {
-            const freshStatus = await checkLoginStatus(); // Fetch fresh status
+        // Update UI based on login state
+        updateExtractionButton(isLoggedIn);
+        logoutButton.style.display = isLoggedIn ? "block" : "none";
+
+        // (Optional) Force a fresh check if needed
+        if (!isLoggedIn) {
+            const freshStatus = await checkLoginStatus();
+            isLoggedIn = freshStatus;
             updateExtractionButton(freshStatus);
+            logoutButton.style.display = freshStatus ? "block" : "none";
             console.log("🌐 Fetched fresh login status:", freshStatus);
         }
+    });
+
+    logoutButton.addEventListener("click", async () => {
+        // Call the logout endpoint via a message to the background script
+        chrome.runtime.sendMessage({ action: "logoutUser" }, (response) => {
+            if (response && response.success) {
+                // Clear login state from local storage and update UI
+                chrome.storage.local.set({ isLoggedIn: false }, () => {
+                    isLoggedIn = false;
+                    updateExtractionButton(false);
+                    logoutButton.style.display = "none";
+                    resetPlugin();
+                    statusElement.textContent = "Logged out successfully.";
+                    
+                });
+            } else {
+                console.error("Logout failed:", response.error);
+            }
+        });
     });
 
     extractionButton.addEventListener("click", async () => {
@@ -36,13 +63,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
                     if (response && response.merchant_name && response.transaction_amount) {
+                        // 1) Remove any commas, spaces, etc. from the amount, keeping only digits, decimal, or '$'
+                        let sanitizedAmount = response.transaction_amount.replace(/[^\d.\$]/g, "");
+                        // If you also want to remove the '$' symbol, do: replace(/[^\d.]/g, "")
+                        
+                        // 2) Then call the form
                         statusElement.textContent = 'Data extracted. Edit if needed:';
-                        showEditableForm(response.merchant_name, response.transaction_amount);
+                        showEditableForm(response.merchant_name, sanitizedAmount);
                     } else {
                         statusElement.textContent = 'Unable to extract details. Please enter manually.';
                         showEditableForm("Unknown", "Unknown");
                     }
                 });
+                
             });
         });
     });
@@ -89,8 +122,9 @@ document.getElementById('start-extraction').addEventListener('click', async () =
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
             if (response && response.merchant_name && response.transaction_amount) {
+                let sanitizedAmount = response.transaction_amount.replace(/[^\d.\$]/g, "");
                 statusElement.textContent = 'Data extracted. Edit if needed:';
-                showEditableForm(response.merchant_name, response.transaction_amount);
+                showEditableForm(response.merchant_name, sanitizedAmount);
             } else {
                 statusElement.textContent = 'Unable to extract details. Please enter manually.';
                 showEditableForm("Unknown", "Unknown");
@@ -126,6 +160,7 @@ async function checkLoginStatus() {
 // Function to display an editable form with extracted or default data
 function showEditableForm(merchant, amount) {
     const formContainer = document.getElementById('form-container');
+    // We'll include an extra <div> to display errors inline
     formContainer.innerHTML = `
         <form id="edit-form" class="edit-form">
             <div class="form-group">
@@ -134,28 +169,80 @@ function showEditableForm(merchant, amount) {
             </div>
             <div class="form-group">
                 <label for="amount-input" class="form-label">Amount:</label>
-                <input type="text" id="amount-input" name="amount" value="${amount}" class="form-input">
+                <input type="text" id="amount-input" name="amount" value="${amount}" class="form-input" placeholder="e.g $10.00,10.00 or 10">
             </div>
             <div class="form-group">
                 <label for="reward-type" class="form-label">Select Reward Type:</label>
                 <select id="reward-type" name="reward-type" class="form-select">
                     <option value="cashback">Cashback</option>
-                    <option value="mileage">Mileage Points</option>
-                    <option value="reward">Reward Points</option>
+                    <option value="miles">Miles</option>
+                    <option value="points">Points</option>
                 </select>
             </div>
-            <button id="submit-edits" type="button" class="btn-submit">Submit</button>
+            <div id="form-error" style="color: red; font-size: 0.9rem; margin-bottom: 0.5rem;"></div>
+            <button id="submit-edits" type="button" class="btn-submit" disabled>Submit</button>
         </form>
     `;
     formContainer.style.display = 'block';
 
-    document.getElementById('submit-edits').addEventListener('click', () => {
-        const editedMerchant = document.getElementById('merchant-input').value;
-        const editedAmount = document.getElementById('amount-input').value;
-        const rewardType = document.getElementById('reward-type').value;
-        // Instead of immediately calling handleEditedDataWithReward,
-        // first check whether the reward type is suitable.
-        handleRewardCheck(editedMerchant, editedAmount, rewardType);
+    // Grab references
+    const merchantInput = document.getElementById('merchant-input');
+    const amountInput = document.getElementById('amount-input');
+    const submitButton = document.getElementById('submit-edits');
+    const errorDiv = document.getElementById('form-error');
+
+    // Function to validate fields
+    function validateFields() {
+        const merchantVal = merchantInput.value.trim();
+        const amountVal = amountInput.value.trim();
+
+        let isValid = true;
+        let errorMsg = "";
+
+        // 1) Merchant must not be "Unknown" or empty
+        if (!merchantVal || merchantVal.toLowerCase() === "unknown") {
+            isValid = false;
+            errorMsg += "• Please provide a valid merchant (not 'Unknown').\n";
+        }
+
+        // 2) Amount must be numeric or currency-like
+        // We'll accept digits, optional $, optional decimal
+        // Example pattern: ^(\$?\d+(\.\d{1,2})?)$
+        const currencyPattern = /^(\$?\d+(\.\d+)?)$/;
+        if (!currencyPattern.test(amountVal)) {
+            isValid = false;
+            errorMsg += "• Please enter a valid amount (e.g. 12.99 or $12.99).\n";
+        }
+
+        // If invalid, show errors and disable submit
+        if (!isValid) {
+            errorDiv.textContent = errorMsg.trim();
+            submitButton.disabled = true;
+        } else {
+            // Clear errors, enable submit
+            errorDiv.textContent = "";
+            submitButton.disabled = false;
+        }
+    }
+
+    // Validate on input changes
+    merchantInput.addEventListener('input', validateFields);
+    amountInput.addEventListener('input', validateFields);
+
+    // Run an initial validation pass
+    validateFields();
+
+    // On submit button click
+    submitButton.addEventListener('click', () => {
+        // Double-check if form is valid
+        if (!submitButton.disabled) {
+            const editedMerchant = merchantInput.value.trim();
+            const editedAmount = amountInput.value.trim();
+            const rewardType = document.getElementById('reward-type').value;
+
+            // If form is valid, proceed with existing logic
+            handleRewardCheck(editedMerchant, editedAmount, rewardType);
+        }
     });
 }
 
@@ -216,11 +303,11 @@ function showRewardWarning(suggestedReward, merchant, amount, currentReward) {
     });
 }
 
-
 async function handleEditedDataWithReward(merchant, amount, rewardType) {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
 
+    // Check if user is logged in
     chrome.storage.local.get(["isLoggedIn"], async (data) => {
         if (!data.isLoggedIn) {
             recommendationContainer.textContent = "Please log in to view recommendations.";
@@ -239,14 +326,19 @@ async function handleEditedDataWithReward(merchant, amount, rewardType) {
 
     // Prepare the request data
     const reqData = {
-        category: merchant,
+        merchant: merchant,
         amount: parsedAmount,
         rewardType: rewardType
     };
 
     console.log("🚀 Sending request to analyze rewards:", reqData);
 
-    // Call your new analyze_rewards endpoint via background.js (using getCardAdvice action)
+    const spinner = document.createElement("div");
+    spinner.classList.add("spinner");
+    recommendationContainer.innerHTML = ""; // Clear old content
+    recommendationContainer.appendChild(spinner);
+
+    // Call your backend endpoint via background.js
     chrome.runtime.sendMessage({ action: 'getCardAdvice', data: reqData }, function(response) {
         if (response.error) {
             console.error("Error fetching reward analysis:", response.error);
@@ -254,16 +346,17 @@ async function handleEditedDataWithReward(merchant, amount, rewardType) {
             return;
         }
 
-        const analysis = response.result; // Expected: { barData, explanation, recommendedCard }
+        const analysis = response.result; // Expected shape: { analysisResults, explanation, recommendedCard, ... }
 
         // Clear previous contents
         recommendationContainer.innerHTML = "";
         recommendationContainer.style.display = 'none'; // Temporarily hide
 
-        // 1. Render the table inside a card
-        renderTable(analysis.barData);
+        // 1. Render the table
+        console.log("📊 Analysis Results:", analysis.analysisResults);
+        renderTable(analysis.analysisResults);
 
-        // 2. Render the explanation in a separate card
+        // 2. Show the explanation
         const explanationCard = document.createElement("div");
         explanationCard.classList.add("analysis-card");
         explanationCard.innerHTML = `
@@ -273,12 +366,27 @@ async function handleEditedDataWithReward(merchant, amount, rewardType) {
         `;
         recommendationContainer.appendChild(explanationCard);
 
-        // Show the container again
+        // --- ADD THE NEW BUTTON HERE ---
+        const resetBtn = document.createElement("button");
+        resetBtn.id = "reset-transaction";
+        resetBtn.classList.add("action-button");
+        resetBtn.textContent = "New Transaction";
+
+        // Append the button
+        recommendationContainer.appendChild(resetBtn);
+
+        // Listen for clicks to reset
+        resetBtn.addEventListener("click", () => {
+            resetPlugin();
+        });
+
+
+        // Display container again
         recommendationContainer.style.display = 'block';
     });
 }
 
-function renderTable(barData) {
+function renderTable(analysisResults) {
     const container = document.getElementById('recommendation-container');
   
     const cardDiv = document.createElement("div");
@@ -289,79 +397,79 @@ function renderTable(barData) {
   
     // Create header row
     const headerRow = document.createElement("tr");
-  
-    // Card Name (standard horizontal header)
+
+    // Card Name (horizontal)
     const cardNameTH = document.createElement("th");
     cardNameTH.textContent = "Card Name";
     headerRow.appendChild(cardNameTH);
-  
-    // Cashback (vertical header)
+
+    // Cashback (vertical)
     const cashbackTH = document.createElement("th");
     cashbackTH.classList.add("vertical-header");
     cashbackTH.textContent = "Cashback (%)";
     headerRow.appendChild(cashbackTH);
-  
-    // Mileage (vertical header)
-    const mileageTH = document.createElement("th");
-    mileageTH.classList.add("vertical-header");
-    mileageTH.textContent = "Mileage (%)";
-    headerRow.appendChild(mileageTH);
-  
-    // Points (vertical header)
+
+    // Miles (vertical)
+    const milesTH = document.createElement("th");
+    milesTH.classList.add("vertical-header");
+    milesTH.textContent = "Miles (%)";
+    headerRow.appendChild(milesTH);
+
+    // Points (vertical)
     const pointsTH = document.createElement("th");
     pointsTH.classList.add("vertical-header");
     pointsTH.textContent = "Points (%)";
     headerRow.appendChild(pointsTH);
-  
+
     table.appendChild(headerRow);
-  
-    // Data rows
-    barData.forEach(item => {
-      const row = document.createElement("tr");
-  
-      // Card Name
-      const cardCell = document.createElement("td");
-      cardCell.textContent = item.cardName;
-      row.appendChild(cardCell);
-  
-      // Cashback
-      const cashbackCell = document.createElement("td");
-      cashbackCell.textContent = formatValue(item.cashbackReturn);
-      row.appendChild(cashbackCell);
-  
-      // Mileage
-      const mileageCell = document.createElement("td");
-      mileageCell.textContent = formatValue(item.mileageReturn);
-      row.appendChild(mileageCell);
-  
-      // Points
-      const pointsCell = document.createElement("td");
-      pointsCell.textContent = formatValue(item.pointsReturn);
-      row.appendChild(pointsCell);
-  
-      table.appendChild(row);
+
+    // Build table rows
+    analysisResults.forEach(item => {
+        const row = document.createElement("tr");
+
+        // Card Name
+        const cardCell = document.createElement("td");
+        cardCell.textContent = item.cardName;
+        row.appendChild(cardCell);
+
+        // Cashback
+        const cashbackCell = document.createElement("td");
+        cashbackCell.textContent = formatValue(item.cashback);
+        row.appendChild(cashbackCell);
+
+        // Miles
+        const milesCell = document.createElement("td");
+        milesCell.textContent = formatValue(item.miles);
+        row.appendChild(milesCell);
+
+        // Points
+        const pointsCell = document.createElement("td");
+        pointsCell.textContent = formatValue(item.points);
+        row.appendChild(pointsCell);
+
+        table.appendChild(row);
     });
-  
+    
     cardDiv.appendChild(table);
     container.appendChild(cardDiv);
-  }
-  
-
-/**
- * Returns a string like "2.8%" or "0.0%" or "N/A" depending on the value.
- */
-function formatValue(value) {
-  if (value == null || isNaN(value)) {
-    return "N/A";
-  }
-  if (value <= 0) {
-    return "0.0%";
-  }
-  // Round to 1 decimal place
-  const displayValue = (Math.round(value * 10) / 10).toFixed(1);
-  return displayValue + "%";
 }
 
+/**
+ * Rounds numeric values to 1 decimal place and adds a '%' sign, 
+ * or returns "N/A" if invalid.
+ */
+function formatValue(value) {
+    if (value == null || value === "N/A" || isNaN(value)) {
+        return "N/A";
+    }
+    const num = parseFloat(value);
+    if (isNaN(num) || num <= 0) {
+        return "0.0%";
+    }
+    // Round to 1 decimal place
+    const rounded = (Math.round(num * 10) / 10).toFixed(1);
+    return `${rounded}%`;
+}
 
 
 // Function to display the login form
@@ -397,6 +505,12 @@ function showLoginForm() {
                 });
                 // Hide the login form after successful login
                 formContainer.style.display = 'none';
+
+                const logoutButton = document.getElementById("logout-button");
+                if (logoutButton) {
+                    logoutButton.style.display = "block";
+                }
+                
             } else {
                 alert(response.error);
             }
@@ -412,4 +526,25 @@ function copyToClipboard(text) {
     }, function(err) {
         console.error('Could not copy text: ', err);
     });
+}
+
+function resetPlugin() {
+    // 1. Clear/hide the recommendation container
+    const recommendationContainer = document.getElementById('recommendation-container');
+    recommendationContainer.innerHTML = "";
+    recommendationContainer.style.display = 'none';
+
+    // 2. Clear/hide the form container
+    const formContainer = document.getElementById('form-container');
+    formContainer.innerHTML = "";
+    formContainer.style.display = 'none';
+
+    // 3. Reset the status badge text
+    const pluginStatus = document.getElementById('plugin-status');
+    if (pluginStatus) {
+        pluginStatus.textContent = "Status: Waiting for action...";
+    }
+
+    // 4. (Optional) If you want to show the "Extract Merchant & Transaction" button again
+    //    or re-initialize something, you can do it here.
 }

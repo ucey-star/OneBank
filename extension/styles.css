@@ -32,7 +32,14 @@
 .header-content {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
+}
+
+.left-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* space between logo and text */
 }
 
 /* Logo container */
@@ -513,4 +520,50 @@ button {
   text-align: center;
   vertical-align: middle;
   padding: 4px;
+}
+
+.spinner {
+  margin: 20px auto;         /* Center horizontally (if container is block-level) */
+  border: 6px solid #f3f3f3; /* Light grey */
+  border-top: 6px solid #0b2447; /* Dark navy to match your theme */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+/* Keyframes for spinning animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#reset-transaction {
+  margin-top: 1rem;
+  background-color: #0b2447; /* Navy, or any color you prefer */
+  color: #fff;
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;             /* Make the button semi-transparent */
+  cursor: not-allowed;      /* Change cursor to show it’s not clickable */
+  background-color: #ccc;   /* (Optional) change background to a greyish color */
+  color: #666;              /* (Optional) change text color */
+}
+
+.logout-button {
+  background-color: transparent;
+  color: #cc4444;       /* a softer red */
+  border: 2px solid #cc4444;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #cc4444;
+  color: #fff;
 }
