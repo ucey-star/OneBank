@@ -26,6 +26,15 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         });
         return true;
 
+    } else if (message.action === 'logoutUser') {
+        // Call the /logout endpoint on your backend
+        performLogout().then(result => {
+            sendResponse({ success: true });
+        }).catch(error => {
+            sendResponse({ success: false, error: error.message });
+        });
+        return true;
+
     } else if (message.action === 'getFullCardDetails') {
         getFullCardDetails(message.cardType).then(result => {
             sendResponse({ result });
@@ -102,6 +111,22 @@ async function getCardAdvice(data) {
         return result;
     } catch (error) {
         console.error("Error fetching card advice:", error);
+        throw error;
+    }
+}
+
+async function performLogout() {
+    try {
+        const response = await fetch(`${API_URL}/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error('Logout failed.');
+        }
+        return true;
+    } catch (error) {
+        console.error("Logout error:", error);
         throw error;
     }
 }

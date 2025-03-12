@@ -278,87 +278,262 @@ def check_reward_type():
 @main.route('/api/analyze_rewards', methods=['POST'])
 @login_required
 def analyze_rewards():
-    data = request.get_json()
-    merchant = data.get('merchant', 'Unknown Merchant')
-    amount = data.get('amount', 0.0)
-    selected_reward_type = data.get('rewardType', 'cashback')
+    """
+    1. Parse input data (merchant, amount, user-chosen rewardType).
+    2. Fetch user's credit cards.
+    3. Compute a table of each card's {cardName, cashback, miles, points}.
+    4. Send the entire table + user-chosen type to ChatGPT, asking it to decide best reward type & card.
+    5. Return JSON with { analysisResults, explanation, recommendedCard, recommendedRewardType }.
+    """
+
+    # 1. Parse input
+    data = request.get_json(force=True) or {}
+    merchant = data.get("merchant", "Unknown Merchant")
+    user_selected_type = data.get("rewardType", "cashback")
+    source = data.get("source", None)
+
+    raw_amount = data.get("amount", 0.0)
+    try:
+        amount = float(raw_amount)
+    except (ValueError, TypeError):
+        amount = 0.0
+
     user_id = current_user.id
     user_cards = fetch_user_credit_cards(user_id)
-    
     if not user_cards:
         return jsonify({
-            "barData": [],
+            "analysisResults": [],
             "explanation": "No credit cards available for analysis.",
-            "recommendedCard": None
+            "recommendedCard": None,
+            "recommendedRewardType": None
         }), 200
 
-    bar_data = []
-    explanation_lines = []
-    best_card_for_selected = None
-    best_return_for_selected = 0.0
-
-    # Example mapping for merchant category may be added later
-    # For now, we assume the selected reward type applies across cards.
+    # 2. Build the table
+    analysis_results = []
     for card in user_cards:
-        issuer = card["issuer"]
-        card_type = card["CardType"]
-        issuer_dict = credit_cards_db.get(issuer, {})
-        card_info = issuer_dict.get(card_type, {})
-        rewards_dict = card_info.get("Rewards", {})
-        
-        # Simple heuristics to determine returns (naive parsing)
-        cashback_return = 0.0
-        mileage_return = 0.0
-        points_return = 0.0
-        
-        reward_text = json.dumps(rewards_dict).lower()
-        if "cash back" in reward_text:
-            try:
-                cashback_return = float([s for s in reward_text.split() if "%" in s][0].replace("%", ""))
-            except Exception:
-                cashback_return = 1.0
-        if "miles" in reward_text:
-            mileage_return = 2.8  # naive default
-        if "points" in reward_text:
-            if "2x points" in reward_text:
-                points_return = 2.4
-            elif "3x points" in reward_text:
-                points_return = 3.6
-            else:
-                points_return = 1.2
+        issuer = card.get("issuer")
+        card_type = card.get("CardType")
+        card_data = credit_cards_db.get(issuer, {}).get(card_type, {})
 
-        card_entry = {
+        rewards_structure = card_data.get("rewards_structure", {})
+        redemption_info = card_data.get("redemption", {})
+
+        row = {
             "cardName": f"{issuer} {card_type}",
-            "cashbackReturn": cashback_return,
-            "mileageReturn": mileage_return,
-            "pointsReturn": points_return
+            "cashback": "N/A",
+            "miles": "N/A",
+            "points": "N/A"
         }
-        bar_data.append(card_entry)
 
-        # Choose best card based on selected reward type
-        if selected_reward_type == "cashback" and cashback_return > best_return_for_selected:
-            best_return_for_selected = cashback_return
-            best_card_for_selected = card_entry["cardName"]
-        elif selected_reward_type == "mileage" and mileage_return > best_return_for_selected:
-            best_return_for_selected = mileage_return
-            best_card_for_selected = card_entry["cardName"]
-        elif selected_reward_type == "reward" and points_return > best_return_for_selected:
-            best_return_for_selected = points_return
-            best_card_for_selected = card_entry["cardName"]
+        # Calculate 'cashback'
+        if "cashback" in rewards_structure:
+            best_cat = get_best_category_for_merchant(
+                merchant, "cashback", list(rewards_structure["cashback"].keys())
+            )
+            if best_cat not in rewards_structure["cashback"]:
+                if "Everything else" in rewards_structure["cashback"]:
+                    multiplier = rewards_structure["cashback"]["Everything else"]
+                else:
+                    multiplier = average_multiplier(rewards_structure["cashback"])
+            else:
+                multiplier = rewards_structure["cashback"][best_cat]
 
-    explanation_lines.append(f"Analyzed {len(user_cards)} cards for a transaction at '{merchant}' with amount ${amount}.")
-    explanation_lines.append(f"Selected reward type: {selected_reward_type}.")
-    if best_card_for_selected:
-        explanation_lines.append(f"The best card for this reward type is: {best_card_for_selected} with an estimated return of {best_return_for_selected}%.")
-    else:
-        explanation_lines.append("None of your cards provided a distinct benefit for the selected reward type.")
+            row["cashback"] = multiplier * 100
 
-    explanation_text = "\n".join(explanation_lines)
+        # Calculate 'miles'
+        if "miles" in rewards_structure:
+            best_cat = get_best_category_for_merchant(
+                merchant, "miles", list(rewards_structure["miles"].keys())
+            )
+            if best_cat not in rewards_structure["miles"]:
+                if "All other purchases" in rewards_structure["miles"]:
+                    multiplier = rewards_structure["miles"]["All other purchases"]
+                else:
+                    multiplier = average_multiplier(rewards_structure["miles"])
+            else:
+                multiplier = rewards_structure["miles"][best_cat]
+
+            miles_to_cash = redemption_info.get("miles_to_cash", 0.0)
+            row["miles"] = multiplier * miles_to_cash * 100
+
+        # Calculate 'points'
+        if "points" in rewards_structure:
+            best_cat = get_best_category_for_merchant(
+                merchant, "points", list(rewards_structure["points"].keys())
+            )
+            if best_cat not in rewards_structure["points"]:
+                if "Everything else" in rewards_structure["points"]:
+                    multiplier = rewards_structure["points"]["Everything else"]
+                else:
+                    multiplier = average_multiplier(rewards_structure["points"])
+            else:
+                multiplier = rewards_structure["points"][best_cat]
+
+            points_to_cash = redemption_info.get("points_to_cash", 0.0)
+            row["points"] = multiplier * points_to_cash * 100
+
+        analysis_results.append(row)
+
+    # 3. Build a prompt
+    prompt_lines = []
+    prompt_lines.append(f"Merchant: {merchant}, transaction amount: ${amount:.2f}")
+    prompt_lines.append(f"Your chosen reward type: {user_selected_type}")
+    prompt_lines.append("Here is the reward table (columns: cashback, miles, points are in %):")
+
+    for row in analysis_results:
+        prompt_lines.append(
+            f"- {row['cardName']}: cashback={row['cashback']}, "
+            f"miles={row['miles']}, points={row['points']}"
+        )
+
+    prompt_lines.append("")
+    prompt_lines.append(
+        """
+        Personalized Instructions:
+        1. Speak directly to the user ("you", "your").
+        2. If the merchant is obviously non-travel (e.g., Amazon), do NOT recommend miles as the best option
+        unless the user explicitly wants to earn miles for future travel. But please when giving your analysis do not reference the fact that the company is not a travel-related company please
+        3. Focus primarily on the user's chosen reward type, but if it seems clearly suboptimal for the merchant,
+        politely explain why and offer a better alternative.
+        4. Reference the percentages from the table (cashback, miles, points) and explain the rationale.
+        5. Use a friendly, personal tone.
+        6. Return ONLY valid JSON with these EXACT keys:
+        {
+        "recommendedRewardType": "...",
+        "recommendedCard": "...",
+        "explanation": "..."
+        }
+        No text outside this JSON.
+        """
+    )
+
+    final_prompt = "\n".join(prompt_lines)
+
+    # 4. Call ChatGPT
+    try:
+        response = ai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                # (B) Strengthen prompt for system
+                {"role": "system", "content": (
+                    "You are a helpful financial advisor. "
+                    "Answer ONLY in valid JSON with the keys: "
+                    "recommendedRewardType, recommendedCard, explanation."
+                )},
+                {"role": "user", "content": final_prompt}
+            ],
+            max_tokens=500
+        )
+
+        # Extract the raw text
+        gpt_content = response.choices[0].message.content.strip()
+
+        # (A) Print raw response for debugging
+
+        # Attempt to parse the JSON
+        gpt_json = json.loads(gpt_content)
+
+        recommended_reward_type = gpt_json.get("recommendedRewardType", None)
+        recommended_card = gpt_json.get("recommendedCard", None)
+        explanation = gpt_json.get("explanation", "No explanation provided.")
+        if source != "playground":
+            log_recommendation(user_id, data, recommended_card)
+    except Exception as e:
+        print(f"ChatGPT error: {e}")
+        # Fallback
+        recommended_reward_type = None
+        recommended_card = None
+        explanation = (
+            "Unable to generate AI-based analysis at this time. "
+            "Here is the table of returns for your reference."
+        )
+
+    # 5. Return final JSON
     return jsonify({
-        "barData": bar_data,
-        "explanation": explanation_text,
-        "recommendedCard": best_card_for_selected
+        "analysisResults": analysis_results,
+        "explanation": explanation,
+        "recommendedCard": recommended_card,
+        "recommendedRewardType": recommended_reward_type
     }), 200
+
+# ----------------------------------------------------------------------
+# Example: get_best_category_for_merchant
+# ----------------------------------------------------------------------
+def get_best_category_for_merchant(merchant: str, reward_type: str, categories: list) -> str:
+    """
+    Ask ChatGPT which subcategory best fits the merchant. 
+    Return that subcategory or fallback is handled by caller if not found.
+    """
+    if not categories:
+        return "Everything else"
+
+    prompt = f"""
+You are an expert in matching merchants to credit card reward categories.
+Given the merchant "{merchant}", the reward type "{reward_type}",
+and these possible categories {categories}, which single category best fits?
+Return strictly JSON like {{"category":"Dining"}}. If nothing fits, {{"category":"Everything else"}}.
+"""
+    try:
+        resp = ai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a concise assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100
+        )
+        content = resp.choices[0].message.content.strip()
+        obj = json.loads(content)
+        return obj.get("category", "Everything else")
+    except Exception as e:
+        print(f"get_best_category_for_merchant error: {e}")
+        return "Everything else"
+
+
+def average_multiplier(mdict: dict) -> float:
+    """Compute average among the dict's values or return 0.0 if empty."""
+    if not mdict:
+        return 0.0
+    vals = list(mdict.values())
+    return sum(vals) / len(vals)
+
+
+def is_suitable_reward_type(merchant_name: str, reward_type: str) -> bool:
+    """
+    Use the ChatGPT API to decide if a reward type is suitable for a given merchant.
+    
+    The function constructs a prompt for ChatGPT with the merchant name and reward type.
+    For example, if the reward type is "miles", it should only be considered suitable
+    if the merchant is travel-related (e.g., airline, hotel, travel agency, etc.).
+    The ChatGPT API is instructed to return a JSON object like:
+      {"suitable": true} or {"suitable": false}
+    
+    :param merchant_name: Name of the merchant (e.g., "Delta Airlines", "Amazon", etc.)
+    :param reward_type: Reward type (e.g., "cashback", "points", or "miles")
+    :return: True if the reward type is suitable for the merchant; otherwise, False.
+    """
+    prompt = f"""
+You are an expert financial advisor specializing in credit card rewards.
+Given the merchant name "{merchant_name}" and the reward type "{reward_type}", determine if the reward type is appropriate for this merchant.
+For instance, if the reward type is "miles", it should only be considered suitable if the merchant is related to travel (such as airlines, hotels, or travel agencies).
+Return your answer strictly as a JSON object with a single field "suitable" that is either true or false. Do not include any extra text.
+"""
+    try:
+        response = ai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a concise financial advisor."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50
+        )
+        # Parse the response from ChatGPT.
+        result = json.loads(response.choices[0].message.content.strip())
+        return result.get("suitable", False)
+    except Exception as e:
+        print(f"Error in ChatGPT suitability check: {e}")
+        # Fallback: if an error occurs, default to True.
+        return True
 
 @main.route('/api/delete_card/<int:card_id>', methods=['DELETE'])
 @login_required

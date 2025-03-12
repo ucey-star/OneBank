@@ -100,8 +100,9 @@ export default function RecommendationHistoryGraph() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={history}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 20, right: 40, left: 20, bottom: 20 }}
             >
+                {console.log("data", history)}
               <defs>
                 <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6366F1" stopOpacity={1} />
