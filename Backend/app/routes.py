@@ -77,7 +77,7 @@ def login():
     user = User.query.filter_by(email=email).first()
     if user and user.check_password(password):
         login_user(user, remember=True)
-        return jsonify({"message": "Login successful", "user": {"email": email}}), 200
+        return jsonify({"message": "Login successful", "user": {"email": email, "first_name": user.first_name, "default_reward_type": user.default_reward_type}}), 200
     return jsonify({"error": "Invalid credentials"}), 401
 
 
@@ -85,7 +85,9 @@ def login():
 @main.route("/logout", methods=["POST"])
 @login_required
 def logout():
+    print("logging out")
     logout_user()
+    print(logout_user())
     return jsonify({"message": "Logged out successfully"}), 200
 
 @main.route('/download-extension')
@@ -107,13 +109,9 @@ def get_credit_cards():
 
         card_list = []
         for card in credit_cards:
-            # Decrypt card number if you need the full value
-            decrypted_number = safe_decrypt(card.card_number)
             card_list.append({
                 'id': card.id,
                 'cardHolderName': card.card_holder_name,
-                'cardNumber': f"**** **** **** {decrypted_number[-4:]}",
-                'expiryDate': card.expiry_date,
                 'issuer': card.issuer,
                 'cardType': card.card_type
             })
@@ -126,39 +124,31 @@ def get_credit_cards():
 
 
 
-
 @main.route('/api/add-credit-card', methods=["POST"])
 @login_required
 def add_credit_card():
     if not current_user.is_authenticated:
         return jsonify({'error': 'User not authenticated'}), 401
-    
+
     if not request.json:
         return jsonify({'error': 'Request must be JSON'}), 400
 
-    card_number = request.json.get('cardNumber')
     card_holder_name = request.json.get('cardHolderName')
-    expiry_date = request.json.get('expiryDate')
-    cvv = request.json.get('cvv')
     issuer = request.json.get('issuer')
     card_type = request.json.get('cardType')
 
-    if not all([card_number, card_holder_name, expiry_date, cvv, issuer, card_type]):
+    if not all([card_holder_name, issuer, card_type]):
         return jsonify({'error': 'Missing required credit card details'}), 400
 
-    existing_card = CreditCard.query.filter_by(card_number=card_number, user_id=current_user.id).first()
+    # Check if a similar card is already registered for this user
+    existing_card = CreditCard.query.filter_by(
+        card_holder_name=card_holder_name, issuer=issuer, card_type=card_type, user_id=current_user.id
+    ).first()
     if existing_card:
         return jsonify({'error': 'Credit card already registered'}), 409
 
-    # Encrypt sensitive fields before storing
-    encrypted_card_number = encrypt_field(card_number)
-    encrypted_cvv = encrypt_field(cvv)
-
     new_card = CreditCard(
-        card_number=encrypted_card_number,
         card_holder_name=card_holder_name,
-        expiry_date=expiry_date,
-        cvv=encrypted_cvv,
         issuer=issuer,
         card_type=card_type,
         user_id=current_user.id
@@ -170,44 +160,38 @@ def add_credit_card():
     return jsonify({
         'message': 'Credit card added successfully',
         'card': {
-            # Return masked version if needed
-            'cardNumber': f"**** **** **** {card_number[-4:]}",
+            'id': new_card.id,
             'cardHolderName': card_holder_name,
-            'expiryDate': expiry_date,
             'issuer': issuer,
             'cardType': card_type
         }
     }), 201
 
 
+
 def fetch_user_credit_cards(user_id):
     try:
         credit_cards = CreditCard.query.filter_by(user_id=user_id).all()
         return [{
-            
             'issuer': card.issuer,
             'CardType': card.card_type,
-            'number': safe_decrypt(card.card_number),
-            'cvv': card.cvv,
+            'cardHolderName': card.card_holder_name,
         } for card in credit_cards]
     except Exception as e:
         print(f"Error fetching credit cards: {e}")
         return []
+
     
 @main.route('/api/update-credit-card/<int:card_id>', methods=['PUT'])
 @login_required
 def update_credit_card(card_id):
     try:
-        # Find the credit card by ID and ensure it belongs to the logged-in user
         card = CreditCard.query.filter_by(id=card_id, user_id=current_user.id).first()
-
         if not card:
             return jsonify({'error': 'Credit card not found'}), 404
 
-        # Get updated data from request
         data = request.get_json()
         card.card_holder_name = data.get('cardHolderName', card.card_holder_name)
-        card.expiry_date = data.get('expiryDate', card.expiry_date)
         card.issuer = data.get('issuer', card.issuer)
         card.card_type = data.get('cardType', card.card_type)
 
@@ -217,6 +201,7 @@ def update_credit_card(card_id):
     except Exception as e:
         print(f"Error updating credit card: {e}")
         return jsonify({'error': 'Failed to update credit card'}), 500
+
 
 @main.route('/api/check_reward_type', methods=['POST'])
 @login_required
@@ -275,6 +260,28 @@ def check_reward_type():
         print(f"Failed to check reward type with AI: {e}")
         return jsonify({"error": str(e)}), 500
 
+@main.route('/api/set_default_reward_type', methods=['POST'])
+@login_required
+def set_default_reward_type():
+    data = request.get_json()
+    reward_type = data.get('rewardType', 'cashback')
+
+    if reward_type not in ['cashback', 'miles', 'points']:
+        return jsonify({'error': 'Invalid reward type.'}), 400
+
+    try:
+        current_user.default_reward_type = reward_type
+        db.session.commit()
+        return jsonify({'message': 'Default reward type updated.'}), 200
+    except Exception as e:
+        return jsonify({'error': 'Failed to update reward type.'}), 500
+
+@main.route('/api/get_default_reward_type', methods=['GET'])
+@login_required
+def get_default_reward_type():
+    reward_type = getattr(current_user, 'default_reward_type', 'cashback')
+    return jsonify({'defaultRewardType': reward_type}), 200
+
 @main.route('/api/analyze_rewards', methods=['POST'])
 @login_required
 def analyze_rewards():
@@ -319,7 +326,7 @@ def analyze_rewards():
         redemption_info = card_data.get("redemption", {})
 
         row = {
-            "cardName": f"{issuer} {card_type}",
+            "cardName": f"{card_type}",
             "cashback": "N/A",
             "miles": "N/A",
             "points": "N/A"
@@ -709,9 +716,6 @@ def get_full_card_details_by_type(card_type, user_id):
         if card:
             return {
                 "cardHolderName": card.card_holder_name,
-                "cardNumber": safe_decrypt(card.card_number),
-                "expiryDate": card.expiry_date,
-                "cvv": card.cvv,
                 "issuer": card.issuer,
                 "cardType": card.card_type
             }

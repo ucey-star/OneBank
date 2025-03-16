@@ -72,25 +72,43 @@ async function checkLoginStatus() {
 // Function to perform login
 async function performLogin(credentials) {
     try {
-        const response = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Include cookies
-            body: JSON.stringify(credentials)
-        });
-        if (response.ok) {
-            return { success: true };
-        } else {
-            const errorResult = await response.json();
-            return { success: false, error: errorResult.error || "Login failed." };
-        }
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies
+        body: JSON.stringify(credentials)
+      });
+  
+      // Parse the JSON body
+      const data = await response.json();
+  
+      if (response.ok) {
+        // data.user should now be available
+        return {
+          success: true,
+          user: {
+            first_name: data.user.first_name,
+            default_reward_type: data.user.default_reward_type
+            // you can include other fields here if needed
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: data.error || "Login failed."
+        };
+      }
     } catch (error) {
-        console.error("Login error:", error);
-        return { success: false, error: "An error occurred during login." };
+      console.error("Login error:", error);
+      return {
+        success: false,
+        error: "An error occurred during login."
+      };
     }
-}
+  }
+  
 
 // Function to get card advice from the backend
 async function getCardAdvice(data) {

@@ -12,17 +12,16 @@
     <!-- Header -->
     <header class="sidebar-header">
       <div class="header-content">
-        <!-- Logo/Icon -->
         <div class="left-header">
-            <div class="logo">
-              <span class="logo-icon">🏦</span>
-            </div>
-            <h1 class="title">One Bank</h1>
+          <div class="logo">
+            <span class="logo-icon">🏦</span>
           </div>
-      
-      <!-- Logout Button (hidden by default) -->
-      <button id="logout-button" class="logout-button"  style="display:none;">Logout</button>
-    </div>
+          <h1 class="title">One Bank</h1>
+        </div>
+        <!-- Logout Button (hidden by default) -->
+        <button id="logout-button" class="logout-button" style="display:none;">Logout</button>
+      </div>
+      <div id="welcome-text" class="welcome-text"></div>
     </header>
 
     <!-- Main Content Area -->
@@ -34,31 +33,35 @@
         </div>
       </section>
 
-      <!-- "Add more cards" Button -->
+      <!-- Manage Cards / View Dashboard -->
       <button id="open-website" class="website-button">
-        <span class="button-icon">➕</span> Add more cards
+        <span class="button-icon">➕</span> Manage Cards / View Dashboard
       </button>
 
       <!-- Intro Text -->
       <p class="intro-text">
-        Seamless transaction insights at your fingertips. <br>
-        Click below to start analyzing merchant and transaction data.
+        Seamless transaction insights at your fingertips.
       </p>
-
-      <!-- Extract Button -->
-      <button id="start-extraction" class="action-button">
-        <span class="button-icon">🔍</span> Extract Merchant & Transaction
-      </button>
 
       <!-- Form Container -->
       <div id="form-container" class="form-area" style="display:none;"></div>
 
       <!-- Recommendation Container -->
       <div id="recommendation-container" class="recommendation-area" style="display:none;">
-        <!-- Canvas element for the bar chart (if needed) -->
         <canvas id="myChart"></canvas>
       </div>
     </main>
+
+    <!-- Donation Section -->
+    <footer class="donation-section">
+      <a href="https://buymeacoffee.com/ucey" target="_blank">
+        <img 
+          src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" 
+          alt="Buy Me A Coffee" 
+          class="donation-button"
+        >
+      </a>
+    </footer>
   </div>
 </body>
 </html>

@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  checkAuthStatus,
-  logoutUser,
-} from "../api/auth";
-import {
-  fetchUserCards,
-  deleteUserCard,    // Import the delete function
-} from "../api/credit_cards";
+import { checkAuthStatus, logoutUser } from "../api/auth";
+import { fetchUserCards, deleteUserCard } from "../api/credit_cards";
 import { downloadExtension } from "../api/extension";
 import { toast } from "react-toastify";
-import AddCardModal from "../components/AddCardModal"; // Import the AddCardModal component
+import AddCardModal from "../components/AddCardModal";
 import RecommendationHistoryGraph from "../components/RecommendationHistoryGraph";
 import DeleteCardModal from "../components/DeleteCardModal";
+import DefaultRewardTypeSelector from "../components/DefaultRewardTypeSelector";
+
+// Import Shepherd and its CSS
+import Shepherd from "shepherd.js";
+import "shepherd.js/dist/css/shepherd.css";
+import "./styles/shepherd-custom.css"
+
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -25,7 +26,6 @@ export default function Dashboard() {
   const [cardToEdit, setCardToEdit] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
-  
 
   useEffect(() => {
     async function verifyUser() {
@@ -46,11 +46,10 @@ export default function Dashboard() {
     verifyUser();
   }, [navigate]);
 
-  // Define loadUserCards outside of useEffect to call it from elsewhere
   async function loadUserCards() {
     try {
       setCardsLoading(true);
-      const userCards = await fetchUserCards(); // e.g., returns [{...}, {...}]
+      const userCards = await fetchUserCards();
       setCards(userCards);
     } catch (err) {
       console.error("Error fetching cards:", err);
@@ -59,14 +58,105 @@ export default function Dashboard() {
     }
   }
 
-  // Once user is authed, fetch their credit cards
   useEffect(() => {
     if (isAuthed) {
       loadUserCards();
     }
   }, [isAuthed]);
 
-  // During initial auth check
+  // Shepherd.js integration for first-time users
+  useEffect(() => {
+    if (isAuthed && !localStorage.getItem("hasSeenShepherdTour")) {
+      // Create the tour with overlay enabled
+      const tour = new Shepherd.Tour({
+        defaultStepOptions: {
+          classes: "shepherd-theme-arrows", // or your custom theme class
+          scrollTo: { behavior: "smooth", block: "center" },
+        },
+        useModalOverlay: true, // Ensure the modal overlay is enabled
+      });
+
+      tour.addStep({
+        id: "header",
+        text: "This is the header with navigation. Here you can download the extension, access the playground, or log out.",
+        attachTo: { element: "#header", on: "bottom" },
+        buttons: [
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "reward-selector",
+        text: "This is the Default Reward Type Selector. Set your preferred reward type here.",
+        attachTo: { element: "#reward-selector", on: "bottom" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "card-overview",
+        text: "This section displays your credit cards. You can add, edit, or delete cards here.",
+        attachTo: { element: "#card-overview", on: "top" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "extension-download",
+        text: "Click here to download our browser extension.",
+        attachTo: { element: "#extension-download", on: "bottom" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "recommendation-history",
+        text: "Review your recommendation history with graphs and insights here.",
+        attachTo: { element: "#recommendation-history", on: "top" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Done",
+            action: tour.complete,
+          },
+        ],
+      });
+
+      tour.start();
+      localStorage.setItem("hasSeenShepherdTour", "true");
+    }
+  }, [isAuthed]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen text-xl">
@@ -75,7 +165,6 @@ export default function Dashboard() {
     );
   }
 
-  // If auth fails, we redirect, so no need to render
   if (!isAuthed) {
     return null;
   }
@@ -85,7 +174,6 @@ export default function Dashboard() {
     setShowDeleteModal(true);
   }
 
-  // Called when user confirms deletion from the modal
   async function confirmDeleteCard(cardId) {
     try {
       await deleteUserCard(cardId);
@@ -99,23 +187,46 @@ export default function Dashboard() {
     setCardToDelete(null);
   }
 
-  // Called when user cancels deletion
   function cancelDeleteCard() {
     setShowDeleteModal(false);
     setCardToDelete(null);
   }
 
-  // --- Dashboard Layout ---
+  async function handleLogout() {
+    try {
+      await logoutUser();
+      toast.success("Logged out successfully.");
+      navigate("/login");
+    } catch (err) {
+      toast.error("Failed to log out");
+      console.error("Failed to log out:", err);
+    }
+  }
+
+  function handleCardSaved() {
+    loadUserCards();
+    setIsCardModalOpen(false);
+    setCardToEdit(null);
+    toast.success("Card saved successfully.");
+  }
+
+  function handleEditCard(card) {
+    setModalMode("edit");
+    setCardToEdit(card);
+    setIsCardModalOpen(true);
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* -- Header -- */}
-      <header className="bg-white shadow">
+      <header id="header" className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">
             One<span className="text-blue-600">Bank</span>
           </h1>
           <nav className="flex space-x-6">
-          <button
+            <button
+              id="extension-download"
               onClick={downloadExtension}
               className="text-gray-600 hover:text-blue-600 font-medium transition"
             >
@@ -138,14 +249,18 @@ export default function Dashboard() {
       </header>
 
       {/* -- Main Content -- */}
-      <main className="flex-grow">
+      <main className="flex-grow" id="dashboard-overview">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <h2 className="text-3xl font-semibold text-gray-800 mb-6">
             Welcome back!
           </h2>
 
+          <div id="reward-selector">
+            <DefaultRewardTypeSelector />
+          </div>
+
           {/* -- Card Overview Section -- */}
-          <section className="mb-10">
+          <section id="card-overview" className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-800">
                 Your Credit Cards
@@ -187,22 +302,12 @@ export default function Dashboard() {
                         </h4>
                         <p className="text-sm">{card.cardType}</p>
                       </div>
-                      {/* Optional: Include issuer logo if available */}
-                      {/* <img
-                        src={`/images/card-logos/${card.issuer.toLowerCase()}.png`}
-                        alt={`${card.issuer} logo`}
-                        className="h-8 w-auto"
-                      /> */}
                     </div>
                     <div className="mt-4">
                       <p className="text-sm tracking-widest font-mono">
                         {card.cardNumber}
                       </p>
-                      <p className="text-sm mt-2">
-                        Exp: {card.expiryDate}
-                      </p>
                     </div>
-                    {/* Actions: Edit and Delete */}
                     <div className="absolute top-4 right-4 flex space-x-2">
                       <button
                         onClick={() => handleEditCard(card)}
@@ -247,12 +352,11 @@ export default function Dashboard() {
             )}
           </section>
 
-          {/* -- Recommendation History Section (Placeholder) -- */}
-          <section className="mb-10">
+          {/* -- Recommendation History Section -- */}
+          <section id="recommendation-history" className="mb-10">
             <div className="bg-white rounded-lg shadow p-6">
               <RecommendationHistoryGraph />
             </div>
-
           </section>
         </div>
       </main>
@@ -275,41 +379,12 @@ export default function Dashboard() {
       )}
 
       {showDeleteModal && (
-              <DeleteCardModal
-                cardId={cardToDelete}
-                onConfirm={confirmDeleteCard}
-                onCancel={cancelDeleteCard}
-              />
-            )}
+        <DeleteCardModal
+          cardId={cardToDelete}
+          onConfirm={confirmDeleteCard}
+          onCancel={cancelDeleteCard}
+        />
+      )}
     </div>
   );
-
-  // -- Functions --
-
-  async function handleLogout() {
-    try {
-      await logoutUser(); // calls your /logout
-      toast.success("Logged out successfully.");
-      navigate("/login");
-    } catch (err) {
-      toast.error("Failed to log out")
-      console.error("Failed to log out:", err);
-    }
-  }
-
-  function handleCardSaved() {
-    // Re-fetch the cards from the server for consistency
-    loadUserCards();
-    setIsCardModalOpen(false);
-    setCardToEdit(null);
-    toast.success("Card saved successfully.");
-  }
-
-  function handleEditCard(card) {
-    setModalMode("edit");
-    setCardToEdit(card);
-    setIsCardModalOpen(true);
-  }
-
-
 }

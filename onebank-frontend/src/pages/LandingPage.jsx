@@ -1,44 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import HowItWorks from "../components/HowItWorks";
 
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* -- Navbar -- */}
-      <header className="bg-white shadow">
-        <nav className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold text-gray-800">
-            One<span className="text-blue-600">Bank</span>
-          </div>
-          <div>
-            <Link
-              to="#"
-              className="mx-4 text-gray-600 hover:text-blue-600"
-            >
-              Features
-            </Link>
-            <Link
-              to="#"
-              className="mx-4 text-gray-600 hover:text-blue-600"
-            >
-              Pricing
-            </Link>
-            <Link
-              to="/login"
-              className="mx-4 text-gray-600 hover:text-blue-600"
-            >
-              Login
-            </Link>
-            <Link
-              to="/signup"
-              className="ml-4 inline-block bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition duration-200"
-            >
-              Sign Up
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <Navbar />
 
       {/* -- Hero Section -- */}
       <section className="flex-grow bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center">
@@ -167,6 +137,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      <HowItWorks />
 
       {/* -- Call to Action Section -- */}
       <section className="bg-gray-100 py-16">

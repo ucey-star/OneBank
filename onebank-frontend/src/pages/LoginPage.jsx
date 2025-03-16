@@ -3,6 +3,7 @@ import { loginUser } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import Navbar from "../components/Navbar";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -31,6 +32,8 @@ export default function LoginPage() {
   }
 
   return (
+    <>
+      <Navbar />
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 shadow-md rounded">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">Login</h1>
@@ -93,5 +96,6 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }
