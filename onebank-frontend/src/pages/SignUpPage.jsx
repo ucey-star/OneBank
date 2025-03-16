@@ -3,6 +3,7 @@ import { registerUser } from "../api/auth"; // Import your API function
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import Navbar from "../components/Navbar";
 
 // Regular expression for a strong password:
 // - Minimum eight characters, at least one uppercase letter, one lowercase letter, one number, and one special character.
@@ -90,6 +91,8 @@ export default function SignUpPage() {
   }
 
   return (
+    <>
+      <Navbar />
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 shadow-md rounded">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">Sign Up</h1>
@@ -204,5 +207,6 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }

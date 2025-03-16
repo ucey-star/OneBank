@@ -1,0 +1,148 @@
+/* Extraordinarily Epic Shepherd.js Custom Styling */
+
+/* MODAL OVERLAY: Ultra-deep overlay with intense blur */
+.shepherd-modal-overlay-container {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* TOOLTIP CONTAINER: Animated shifting gradient with luminous glow */
+.shepherd-tooltip {
+  background: linear-gradient(135deg, #ffffff, #f2f2f2, #e6e6e6) !important;
+  background-size: 300% 300% !important;
+  animation: epicTooltipGradient 10s ease infinite !important;
+  border: 1px solid #ddd !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  font-family: 'Montserrat', sans-serif !important;
+  padding: 2.5rem !important;
+  color: #222 !important;
+  transition: transform 0.4s ease, opacity 0.4s ease !important;
+  overflow: hidden !important;
+  perspective: 1200px !important;
+}
+
+@keyframes epicTooltipGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* APPEARANCE TRANSITION: Slight tilt for extra drama */
+.shepherd-tooltip {
+  opacity: 0;
+  transform: scale(0.9) rotateX(10deg) !important;
+}
+.shepherd-tooltip.shepherd-has-showed {
+  opacity: 1;
+  transform: scale(1) rotateX(0) !important;
+}
+
+/* TOOLTIP TITLE: Bold, radiant typography with glow */
+.shepherd-tooltip h3 {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 0.8rem !important;
+  color: #1a1a1a !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.15), 0 0 6px #ffffff !important;
+}
+
+/* TOOLTIP TEXT: Elevated clarity, generous spacing */
+.shepherd-tooltip p {
+  font-size: 1.3rem !important;
+  line-height: 1.8 !important;
+  color: #333333 !important;
+  margin-bottom: 1.2rem !important;
+}
+
+/* SHEPHERD BUTTONS: Vibrant gradient buttons with deep shadow and pop effect */
+.shepherd-button {
+  background: linear-gradient(135deg, #3498db, #2980b9) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  color: #ffffff !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  padding: 1rem 1.8rem !important;
+  cursor: pointer !important;
+  transition: background 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease !important;
+  margin: 0 0.5rem !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+}
+.shepherd-button:hover {
+  background: linear-gradient(135deg, #2980b9, #1c5980) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 8px rgba(52,152,219,0.5) !important;
+}
+.shepherd-button:active {
+  transform: translateY(0) !important;
+}
+
+/* SKIP BUTTON: Bold, striking red gradient */
+.shepherd-button.shepherd-button--cancel {
+  background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+  border-radius: 16px !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  padding: 1rem 1.8rem !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+}
+.shepherd-button.shepherd-button--cancel:hover {
+  background: linear-gradient(135deg, #c0392b, #922d1f) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 8px rgba(231,76,60,0.5) !important;
+}
+
+/* TOOLTIP ARROW: Minimal arrow with refined glow and shadow */
+.shepherd-tooltip .shepherd-arrow {
+  border: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: linear-gradient(135deg, #ffffff, #f2f2f2, #e6e6e6) !important;
+  transform: rotate(45deg) !important;
+  box-shadow: -4px -4px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* STEP NUMBER: Radiant circular badge with extra glow */
+.shepherd-step-number {
+  background: #facc15 !important;
+  color: #ffffff !important;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  width: 50px !important;
+  height: 50px !important;
+  line-height: 50px !important;
+  border-radius: 50% !important;
+  text-align: center !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 12px rgba(250,204,21,0.6) !important;
+}
+
+/* BULLETS: Refined, subtle navigation dots */
+.shepherd-bullets {
+  text-align: center !important;
+  padding: 10px 0 !important;
+}
+.shepherd-bullets ul {
+  margin: 0 auto !important;
+  padding: 0 !important;
+  display: inline-block !important;
+}
+.shepherd-bullets ul li {
+  list-style: none !important;
+  display: inline-block !important;
+  margin: 0 4px !important;
+}
+.shepherd-bullets ul li a {
+  display: block !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: #ccc !important;
+  border-radius: 50% !important;
+  transition: all 0.2s ease-in !important;
+}
+.shepherd-bullets ul li a.active,
+.shepherd-bullets ul li a:hover {
+  width: 12px !important;
+  height: 12px !important;
+  background: #999 !important;
+}

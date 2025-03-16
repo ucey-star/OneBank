@@ -5,14 +5,11 @@ export default function AddCardModal({ onClose, onCardSaved, card = null, mode =
   const [issuer, setIssuer] = useState(card?.issuer || "");
   const [cardType, setCardType] = useState(card?.cardType || "");
   const [cardHolderName, setCardHolderName] = useState(card?.cardHolderName || "");
-  const [cardNumber, setCardNumber] = useState(card?.cardNumber || "");
-  const [expiryDate, setExpiryDate] = useState(card?.expiryDate || "");
-  const [cvv, setCvv] = useState(card?.cvv || ""); // Typically not editable in edit mode
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // State to hold issuers and card types
+  // State to hold issuers and card type options
   const [cardOptions, setCardOptions] = useState({});
   const [cardTypeOptions, setCardTypeOptions] = useState([]);
 
@@ -45,31 +42,21 @@ export default function AddCardModal({ onClose, onCardSaved, card = null, mode =
     setErrorMessage("");
 
     try {
-      // Create card data object
+      // Create card data object with only the allowed fields
       const cardData = {
         issuer,
         cardType,
         cardHolderName,
-        cardNumber,
-        expiryDate,
-        cvv,
       };
 
       if (mode === "edit") {
-        // Exclude fields that shouldn't be updated
-        delete cardData.cardNumber;
-        delete cardData.cvv;
-
-        // Call API to update the card
         await updateUserCard(card.id, cardData);
       } else {
-        // Call API to add the card
         await addUserCard(cardData);
       }
 
-      // Inform parent component that the card was saved
+      // Inform parent component and close the modal
       onCardSaved();
-      // Close the modal
       onClose();
     } catch (err) {
       console.error("Failed to save card:", err);
@@ -156,59 +143,6 @@ export default function AddCardModal({ onClose, onCardSaved, card = null, mode =
               required
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               placeholder="Name as on card"
-            />
-          </div>
-
-          {/* Card Number (only in add mode) */}
-          {mode === "add" && (
-            <>
-              <div className="mb-4">
-                <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700">
-                  Card Number
-                </label>
-                <input
-                  type="text"
-                  id="cardNumber"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  required
-                  maxLength={16}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  placeholder="16-digit card number"
-                />
-              </div>
-
-              {/* CVV */}
-              <div className="mb-4">
-                <label htmlFor="cvv" className="block text-sm font-medium text-gray-700">
-                  CVV
-                </label>
-                <input
-                  type="text"
-                  id="cvv"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                  required
-                  maxLength={4}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  placeholder="3 or 4-digit CVV"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Expiry Date */}
-          <div className="mb-6">
-            <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700">
-              Expiry Date
-            </label>
-            <input
-              type="month"
-              id="expiryDate"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
             />
           </div>
 

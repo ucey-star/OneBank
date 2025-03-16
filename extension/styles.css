@@ -12,7 +12,7 @@
   left: 0;
   top: 0;
   width: 100%;           /* Use full width */
-  max-width: 320px;      /* Limit to a max of 320px */
+  max-width: 400px;      /* Limit to a max of 320px */
   height: 100vh;
   background: linear-gradient(135deg, #ffffff, #f2f2f2);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
@@ -132,17 +132,6 @@ button {
   font-size: 0.95rem;
   line-height: 1.4;
   color: #555;
-}
-
-/* "Extract Merchant & Transaction" button */
-.action-button {
-  background-color: #0b2447;
-  color: #ffffff;
-}
-
-.action-button:hover {
-  background-color: #0d355c;
-  transform: scale(1.03);
 }
 
 /* Form area & Recommendation area */
@@ -538,11 +527,7 @@ button {
   100% { transform: rotate(360deg); }
 }
 
-#reset-transaction {
-  margin-top: 1rem;
-  background-color: #0b2447; /* Navy, or any color you prefer */
-  color: #fff;
-}
+
 
 .btn-submit:disabled {
   opacity: 0.5;             /* Make the button semi-transparent */
@@ -566,4 +551,163 @@ button {
 .logout-button:hover {
   background-color: #cc4444;
   color: #fff;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;            /* A bright gold color */
+  margin-top: 0.75rem;
+  text-align: center;        /* Center the text */
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3); /* Subtle shadow */
+  padding: 0.4rem 0.5rem;    /* Some breathing room */
+  border-radius: 4px;
+  background-color: #0b2447;  /* Same dark navy background (or any color you like) */
+  display: inline-block;      /* Make it shrink-wrap the text */
+}
+
+.analysis-table {
+  border-collapse: collapse;
+  /* table-layout: fixed; REMOVE or comment this out */
+  width: 100%;
+}
+
+.analysis-table th,
+.analysis-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+  /* Let content expand/wrap */
+  white-space: normal;       /* or 'nowrap' if you prefer a single line */
+  overflow: visible;
+  text-overflow: clip;       /* no "..." */
+  min-width: 60px;
+}
+
+/* Keep your highlight exactly as you have it */
+.recommended-row {
+  background-color: #f7ffe0;    
+  border-left: 4px solid #a3e635;
+  animation: highlightFade 0.8s ease;
+}
+.recommended-row td {
+  font-weight: 600;
+  color: #2f6600;
+}
+.analysis-table tr.recommended-row:hover {
+  background-color: #eefcd1 !important;
+}
+
+/* Donation section at the bottom of the sidebar */
+.donation-section {
+  text-align: center;
+  padding: 1rem 0;
+  border-top: 1px solid #ddd;
+  margin-top: auto; /* pushes it to the bottom */
+}
+
+/* Donation button image styling */
+.donation-button {
+  height: 45px;
+  transition: transform 0.2s ease;
+}
+
+.donation-button:hover {
+  transform: scale(1.05);
+}
+
+/* Example: Make the login button a complementary style to the logout button */
+.login-button {
+  background-color: #0b2447; 
+  color: #fff;
+  border: 2px solid #0b2447;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  background-color: #0d355c;
+  transform: scale(1.03);
+}
+
+/* Button Group Styling */
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-primary, .btn-secondary, .action-button {
+
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+  background-color: #02193d;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #02193d;
+  border: 1px solid#02193d;
+}
+
+.action-button {
+  background-color: #163a60;
+  color: white;
+  border: 1px solid#02193d;
+}
+
+.btn-primary:hover, .btn-secondary:hover, .action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.btn-primary:disabled, .btn-secondary:disabled, .action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Best Card Recommendation Styling - Improved */
+.best-card-only {
+  background-color: #ffffff;
+  border: 1px solid #e1e8ee;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  text-align: center;
+  animation: fadeIn 0.5s ease;
+}
+
+.best-card-only h4 {
+  color: #0b2447;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.best-card-only p {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.button-row {
+  display: flex;
+  align-items: center;        /* vertically center the buttons */
+  justify-content: center;    /* or space-between, flex-end, etc. */
+  gap: 1rem;                  /* horizontal space between buttons */
+  margin-top: 1rem;
 }

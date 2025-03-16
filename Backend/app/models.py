@@ -10,6 +10,7 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
+    default_reward_type = db.Column(db.String(20), default="cashback")
     # Relationships
     credit_cards = db.relationship('CreditCard', backref='owner', lazy='dynamic')
 
@@ -25,16 +26,17 @@ class User(db.Model, UserMixin):
 
 class CreditCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    card_number = db.Column(db.String(20), unique=True, nullable=False)
-    card_holder_name = db.Column(db.String(100), nullable=False)
-    expiry_date = db.Column(db.String(10), nullable=False)  # Format: MM/YY
-    cvv = db.Column(db.String(4), nullable=False)
+    # Set these to nullable=True so they can be omitted when adding a card.
+    card_number = db.Column(db.String(20), unique=True, nullable=True) 
+    card_holder_name = db.Column(db.String(100), nullable=False) 
+    expiry_date = db.Column(db.String(10), nullable=True)  # Format: MM/YY
+    cvv = db.Column(db.String(4), nullable=True) 
     issuer = db.Column(db.String(50), nullable=False)  # e.g., Visa, MasterCard, Amex
     card_type = db.Column(db.String(50), nullable=False)  # e.g., Debit, Credit, Prepaid
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __repr__(self):
-        return f'<CreditCard {self.card_number} ({self.issuer} - {self.card_type})>'
+        return f'<CreditCard {self.card_holder_name} ({self.issuer} - {self.card_type})>'
 
 class RecommendationHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)

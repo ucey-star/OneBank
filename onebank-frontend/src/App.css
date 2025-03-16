@@ -36,3 +36,61 @@
     transform: rotate(360deg);
   }
 }
+
+/* Custom Shepherd Tooltip and Overlay Styling */
+.shepherd-modal-overlay-container {
+  /* Dark semi-transparent overlay with a slight blur effect */
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.shepherd-tooltip {
+  /* A subtle gradient background, smooth rounded corners and a refined shadow */
+  background: linear-gradient(135deg, #ffffff, #f9f9f9) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+  color: #333333 !important;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif !important;
+  padding: 1.5rem !important;
+}
+
+.shepherd-tooltip h3 {
+  font-size: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+  font-weight: bold !important;
+}
+
+.shepherd-tooltip p {
+  font-size: 1rem !important;
+  margin-bottom: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Customize Shepherd buttons */
+.shepherd-button {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 1rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.shepherd-button:hover {
+  background-color: #1d4ed8 !important;
+}
+
+/* Optional: Style the step numbers */
+.shepherd-step-number {
+  background: #facc15 !important;
+  color: #ffffff !important;
+  border-radius: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+}
