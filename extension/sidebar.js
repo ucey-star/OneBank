@@ -49,6 +49,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     logoutButton.style.display = "none";
                     resetPlugin();
                     statusElement.textContent = "Logged out successfully.";
+                     // Clear the welcome text
+                    const welcomeText = document.getElementById("welcome-text");
+                    if (welcomeText) {
+                        welcomeText.textContent = "";
+                    }
                     showLoginForm();
                     
                 });
@@ -57,42 +62,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         });
     });
-
-
-//     extractionButton.addEventListener("click", async () => {
-//         chrome.storage.local.get(["isLoggedIn"], async (data) => {
-//             const isLoggedIn = data.isLoggedIn === true; // Ensure boolean check
-//             console.log("🛑 Checking login before extraction:", isLoggedIn);
-
-//             if (!isLoggedIn) {
-//                 statusElement.textContent = "Please log in to extract data.";
-//                 showLoginForm();
-//                 return;
-//             }
-
-//             statusElement.textContent = 'Extracting merchant details and transaction cost...';
-
-//             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-//                 chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
-//                     if (response && response.merchant_name && response.transaction_amount) {
-//                         // 1) Remove any commas, spaces, etc. from the amount, keeping only digits, decimal, or '$'
-//                         let sanitizedAmount = response.transaction_amount.replace(/[^\d.\$]/g, "");
-//                         // If you also want to remove the '$' symbol, do: replace(/[^\d.]/g, "")
-                        
-//                         // 2) Then call the form
-//                         statusElement.textContent = 'Data extracted. Edit if needed:';
-//                         showEditableForm(response.merchant_name, sanitizedAmount);
-//                     } else {
-//                         statusElement.textContent = 'Unable to extract details. Please enter manually.';
-//                         showEditableForm("Unknown", "Unknown");
-//                     }
-//                 });
-                
-//             });
-//         });
-//     });
-// });
-
 
 // Function to update button label based on authentication
 function updateExtractionButton(isLoggedIn) {
@@ -107,43 +76,6 @@ function updateExtractionButton(isLoggedIn) {
         extractionButton.textContent = "🔐 Enter Your Login Credentials from One Bank";
     }
 }
-
-
-// // Event listener for the "Start Extraction" button
-// document.getElementById('start-extraction').addEventListener('click', async () => {
-//     const statusElement = document.getElementById('plugin-status');
-//     const formContainer = document.getElementById('form-container');
-//     const recommendationContainer = document.getElementById('recommendation-container');
-
-//     // Re-validate login status if not logged in
-//     if (!isLoggedIn) {
-//         isLoggedIn = await checkLoginStatus();
-//     }
-
-//     if (!isLoggedIn) {
-//         statusElement.textContent = "Please log in to extract data.";
-//         showLoginForm();
-//         return;
-//     }
-
-//     statusElement.textContent = 'Extracting merchant details and transaction cost...';
-//     formContainer.style.display = 'none';
-//     recommendationContainer.style.display = 'none';
-
-//     // Send a message to the content script to extract data from the active tab
-//     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-//         chrome.tabs.sendMessage(tabs[0].id, { action: "extract_data" }, (response) => {
-//             if (response && response.merchant_name && response.transaction_amount) {
-//                 let sanitizedAmount = response.transaction_amount.replace(/[^\d.\$]/g, "");
-//                 statusElement.textContent = 'Data extracted. Edit if needed:';
-//                 showEditableForm(response.merchant_name, sanitizedAmount);
-//             } else {
-//                 statusElement.textContent = 'Unable to extract details. Please enter manually.';
-//                 showEditableForm("Unknown", "Unknown");
-//             }
-//         });
-//     });
-// });
 
 // Event listener for the "Open Website" button
 document.getElementById('open-website').addEventListener('click', () => {
@@ -539,24 +471,78 @@ function formatValue(value) {
 function showLoginForm() {
     const formContainer = document.getElementById('form-container');
     formContainer.innerHTML = `
-        <form id="login-form" class="login-form">
-            <h3 class="login-heading">Log In</h3>
-            <div class="login-group">
-                <label for="email-input" class="login-label">Email</label>
-                <input type="email" id="email-input" name="email" class="login-input" required>
-            </div>
-            <div class="login-group">
-                <label for="password-input" class="login-label">Password</label>
-                <input type="password" id="password-input" name="password" class="login-input" required>
-            </div>
-            <!-- Error message placeholder -->
-            <div id="login-error" style="color: red; font-size: 0.9rem; margin-bottom: 0.5rem;"></div>
-            <button id="login-submit" type="button" class="login-button">Login</button>
-        </form>
-    `;
+    <form id="login-form" class="login-form">
+      <h3 class="login-heading">Log In</h3>
+      <div class="login-group">
+          <label for="email-input" class="login-label">Email</label>
+          <input type="email" id="email-input" name="email" class="login-input" required>
+      </div>
+      <div class="login-group">
+          <label for="password-input" class="login-label">Password</label>
+          <input type="password" id="password-input" name="password" class="login-input" required>
+      </div>
+      <!-- Error message placeholder -->
+      <div id="login-error" style="color: red; font-size: 0.9rem; margin-bottom: 0.5rem;"></div>
+      <button id="login-submit" type="button" class="login-button">Login</button>
+    </form>
+    <!-- Divider -->
+    <div class="divider" style="text-align: center; margin: 1rem 0;">
+      <hr style="display:inline-block; width:40%; vertical-align:middle;">
+      <span style="margin:0 0.5rem; color:#666;">OR</span>
+      <hr style="display:inline-block; width:40%; vertical-align:middle;">
+    </div>
+    <!-- Google Sign-In Button -->
+    <button id="google-login-button" class="google-login-button" style="width: 100%; padding: 0.8rem; border: 1px solid #ccc; background: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+      <img src="icons/google_icon.webp" alt="Google Icon" class="google-icon" style="width:24px; height:24px; margin-right: 8px;" />
+      Sign In with Google
+    </button>
+  `;
     formContainer.style.display = 'block';
 
     const loginErrorDiv = document.getElementById('login-error');
+
+    document.getElementById('google-login-button').addEventListener('click', async () => {
+        // Clear any previous error message
+        loginErrorDiv.textContent = "";
+      
+        // Send a message to the background script to initiate Google Auth
+        chrome.runtime.sendMessage({ action: 'initiateGoogleAuth' }, async (response) => {
+          if (response.success) {
+            // Update local storage with the new login state and user info
+            chrome.storage.local.set(
+              {
+                isLoggedIn: true,
+                userFirstName: response.user.first_name,
+                defaultRewardType: response.user.default_reward_type
+              },
+              () => {
+                // Update the UI
+                console.log("🔑 Logged in via Google:", response.user.first_name);
+                document.getElementById('welcome-text').textContent = `Hello, ${response.user.first_name}!`;
+                document.getElementById('plugin-status').textContent = "Logged in successfully via Google!";
+                formContainer.style.display = 'none';
+                defaultRewardType = response.user.default_reward_type;
+              }
+            );
+      
+            // Optionally auto-extract data after login
+            await autoExtractData();
+      
+            // Show the logout button, hide the login button
+            const logoutButton = document.getElementById("logout-button");
+            const loginButton = document.getElementById("login-button");
+            if (logoutButton) {
+              logoutButton.style.display = "block";
+            }
+            loginButton.style.display = "none";
+      
+          } else {
+            // Display the error inside the form
+            loginErrorDiv.textContent = response.error || "Google login failed. Please try again.";
+          }
+        });
+      });
+      
 
     // The important part is marking this click callback as async 
     document.getElementById('login-submit').addEventListener('click', async () => {

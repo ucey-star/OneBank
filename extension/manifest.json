@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "One Bank",
     "version": "1.0",
-    "permissions": ["activeTab", "storage", "sidePanel"],
+    "permissions": ["activeTab", "storage", "sidePanel", "identity"],
     "host_permissions": ["http://*/*", "https://*/*"], 
     "side_panel": {
     "default_path": "sidebar.html"
