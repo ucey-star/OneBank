@@ -225,6 +225,12 @@ export default function Dashboard() {
             One<span className="text-blue-600">Bank</span>
           </h1>
           <nav className="flex space-x-6">
+          <button
+              onClick={() => navigate("/profile")}
+              className="text-gray-600 hover:text-blue-600 font-medium transition"
+            >
+              Profile
+            </button>
             <button
               id="extension-download"
               onClick={downloadExtension}

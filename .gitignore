@@ -8,3 +8,4 @@ Backend/app/.pytest_cache
 Backend/.DS_Store
 Backend/instance/
 Backend/migrations/
+Backend/.flask_session/

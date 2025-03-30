@@ -115,3 +115,33 @@ export async function getCardAdvice(merchant, amount, source = "extension") {
     const data = await response.json();
     return data.recommended_card; // Assuming the backend returns { recommended_card: "..." }
   }
+
+  export async function fetchCardBenefits(issuer, cardType) {
+    const url = `${BASE_URL}/api/get_card_benefits?issuer=${encodeURIComponent(issuer)}&cardType=${encodeURIComponent(cardType)}`;
+    const response = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to fetch card benefits.");
+    }
+    const data = await response.json();
+    return data; // Returns an object with the nonempty benefit sections.
+  }
+
+export async function updateCardBenefits(cardId, benefitsData) {
+  const response = await fetch(`${BASE_URL}/api/update-card-benefits/${cardId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(benefitsData),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to update card benefits.");
+  }
+  return await response.json();
+}
