@@ -11,6 +11,8 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     default_reward_type = db.Column(db.String(20), default="cashback")
+     # Add a new column for storing a profile picture URL or file path
+    profile_pic = db.Column(db.LargeBinary, nullable=True)
     # Relationships
     credit_cards = db.relationship('CreditCard', backref='owner', lazy='dynamic')
 
@@ -34,6 +36,7 @@ class CreditCard(db.Model):
     issuer = db.Column(db.String(50), nullable=False)  # e.g., Visa, MasterCard, Amex
     card_type = db.Column(db.String(50), nullable=False)  # e.g., Debit, Credit, Prepaid
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    socialized_benefits = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f'<CreditCard {self.card_holder_name} ({self.issuer} - {self.card_type})>'

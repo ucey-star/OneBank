@@ -50,10 +50,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     resetPlugin();
                     statusElement.textContent = "Logged out successfully.";
                      // Clear the welcome text
-                    const welcomeText = document.getElementById("welcome-text");
-                    if (welcomeText) {
-                        welcomeText.textContent = "";
-                    }
+            const welcomeText = document.getElementById("welcome-text");
+            if (welcomeText) {
+                welcomeText.textContent = "";
+            }
                     showLoginForm();
                     
                 });
@@ -150,10 +150,13 @@ function showEditableForm(merchant, amount) {
     const bestCardButton = document.getElementById('show-recommended-card');
     const errorDiv = document.getElementById('form-error');
 
+    let autoUpdateTimer = null;
+
     // Function to validate fields
     function validateFields() {
         const merchantVal = merchantInput.value.trim();
         const amountVal = amountInput.value.trim();
+        const rewardType = rewardSelect.value; 
 
         let isValid = true;
         let errorMsg = "";
@@ -183,6 +186,15 @@ function showEditableForm(merchant, amount) {
             errorDiv.textContent = "";
             submitButton.disabled = false;
             bestCardButton.disabled = false;
+
+            // Debounce auto-update: clear any previous timer and set a new one
+            if (autoUpdateTimer) {
+                clearTimeout(autoUpdateTimer);
+            }
+            autoUpdateTimer = setTimeout(() => {
+                // Call handleRewardCheck automatically in bestCardOnly mode
+                handleRewardCheck(merchantVal, amountVal, rewardType, true);
+            }, 300);
         }
     }
 
