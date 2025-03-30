@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from openai import OpenAI
 from cryptography.fernet import Fernet
 from urllib.parse import urlencode
+from werkzeug.utils import secure_filename
 
 ai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
@@ -202,7 +203,8 @@ def get_credit_cards():
                 'id': card.id,
                 'cardHolderName': card.card_holder_name,
                 'issuer': card.issuer,
-                'cardType': card.card_type
+                'cardType': card.card_type,
+                'socialized_benefits': card.socialized_benefits
             })
 
         return jsonify({'cards': card_list}), 200
@@ -292,6 +294,21 @@ def update_credit_card(card_id):
         return jsonify({'error': 'Failed to update credit card'}), 500
 
 
+@main.route('/api/update-card-benefits/<int:card_id>', methods=['PUT'])
+@login_required
+def update_card_benefits(card_id):
+    data = request.get_json()
+    benefits = data.get('benefits')
+    # Locate the credit card for the current user
+    card = CreditCard.query.filter_by(id=card_id, user_id=current_user.id).first()
+    if not card:
+        return jsonify({'error': 'Credit card not found'}), 404
+    
+    # Assume your CreditCard model has a 'socialized_benefits' field
+    card.socialized_benefits = benefits
+    db.session.commit()
+    return jsonify({'message': 'Benefits updated successfully'}), 200
+
 @main.route('/api/check_reward_type', methods=['POST'])
 @login_required
 def check_reward_type():
@@ -371,18 +388,11 @@ def get_default_reward_type():
     reward_type = getattr(current_user, 'default_reward_type', 'cashback')
     return jsonify({'defaultRewardType': reward_type}), 200
 
+...
+
 @main.route('/api/analyze_rewards', methods=['POST'])
 @login_required
 def analyze_rewards():
-    """
-    1. Parse input data (merchant, amount, user-chosen rewardType).
-    2. Fetch user's credit cards.
-    3. Compute a table of each card's {cardName, cashback, miles, points}.
-    4. Send the entire table + user-chosen type to ChatGPT, asking it to decide best reward type & card.
-    5. Return JSON with { analysisResults, explanation, recommendedCard, recommendedRewardType }.
-    """
-
-    # 1. Parse input
     data = request.get_json(force=True) or {}
     merchant = data.get("merchant", "Unknown Merchant")
     user_selected_type = data.get("rewardType", "cashback")
@@ -404,13 +414,13 @@ def analyze_rewards():
             "recommendedRewardType": None
         }), 200
 
-    # 2. Build the table
     analysis_results = []
+    extra_benefits_info = []
+
     for card in user_cards:
         issuer = card.get("issuer")
         card_type = card.get("CardType")
         card_data = credit_cards_db.get(issuer, {}).get(card_type, {})
-
         rewards_structure = card_data.get("rewards_structure", {})
         redemption_info = card_data.get("redemption", {})
 
@@ -421,7 +431,6 @@ def analyze_rewards():
             "points": "N/A"
         }
 
-        # Calculate 'cashback'
         if "cashback" in rewards_structure:
             best_cat = get_best_category_for_merchant(
                 merchant, "cashback", list(rewards_structure["cashback"].keys())
@@ -436,7 +445,6 @@ def analyze_rewards():
 
             row["cashback"] = multiplier * 100
 
-        # Calculate 'miles'
         if "miles" in rewards_structure:
             best_cat = get_best_category_for_merchant(
                 merchant, "miles", list(rewards_structure["miles"].keys())
@@ -452,7 +460,6 @@ def analyze_rewards():
             miles_to_cash = redemption_info.get("miles_to_cash", 0.0)
             row["miles"] = multiplier * miles_to_cash * 100
 
-        # Calculate 'points'
         if "points" in rewards_structure:
             best_cat = get_best_category_for_merchant(
                 merchant, "points", list(rewards_structure["points"].keys())
@@ -470,7 +477,25 @@ def analyze_rewards():
 
         analysis_results.append(row)
 
-    # 3. Build a prompt
+        # Collect relevant extra benefits
+        seasonal = card_data.get("seasonal_benefits", {})
+        additional = card_data.get("additional_benefits", {})
+
+        db_card = CreditCard.query.filter_by(user_id=user_id, card_type=card_type).first()
+        socialized = json.loads(db_card.socialized_benefits or '{}') if db_card and db_card.socialized_benefits else {}
+
+        all_extras = {**seasonal, **additional, **socialized}
+        relevant_extras = []
+
+        for label, detail in all_extras.items():
+            benefit_str = detail if isinstance(detail, str) else json.dumps(detail)
+            if is_benefit_relevant_to_merchant(benefit_str, merchant):
+                relevant_extras.append(f"{label}: {benefit_str}")
+
+        if relevant_extras:
+            extra_benefits_info.append(f"{card_type}: " + "; ".join(relevant_extras))
+
+    # Build GPT Prompt
     prompt_lines = []
     prompt_lines.append(f"Merchant: {merchant}, transaction amount: ${amount:.2f}")
     prompt_lines.append(f"Your chosen reward type: {user_selected_type}")
@@ -482,51 +507,33 @@ def analyze_rewards():
             f"miles={row['miles']}, points={row['points']}"
         )
 
-    prompt_lines.append("")
-    prompt_lines.append(
-        """
-        Personalized Instructions:
-        1. Speak directly to the user ("you", "your").
-        2. If the merchant is obviously non-travel (e.g., Amazon), do NOT recommend miles as the best option
-        unless the user explicitly wants to earn miles for future travel. But please when giving your analysis do not reference the fact that the company is not a travel-related company please
-        3. Focus primarily on the user's chosen reward type, but if it seems clearly suboptimal for the merchant,
-        politely explain why and offer a better alternative.
-        4. Reference the percentages from the table (cashback, miles, points) and explain the rationale.
-        5. Use a friendly, personal tone.
-        6. Return ONLY valid JSON with these EXACT keys:
-        {
-        "recommendedRewardType": "...",
-        "recommendedCard": "...",
-        "explanation": "..."
-        }
-        No text outside this JSON.
-        """
-    )
+    if extra_benefits_info:
+        prompt_lines.append("\nSome cards also have relevant extra benefits:")
+        for line in extra_benefits_info:
+            prompt_lines.append(f"- {line}")
+
+    prompt_lines.append("""
+Personalized Instructions:
+1. Speak directly to the user ("you", "your").
+2. Only recommend extra benefits (like subscriptions or bonus categories) if relevant to the current merchant.
+3. Focus on the user's chosen reward type, but if it's suboptimal, explain why and offer a better choice.
+4. Reference the reward % and extra perks where appropriate.
+5. Return strictly JSON with keys: recommendedRewardType, recommendedCard, explanation.
+""")
 
     final_prompt = "\n".join(prompt_lines)
 
-    # 4. Call ChatGPT
     try:
         response = ai_client.chat.completions.create(
             model="gpt-4",
             messages=[
-                # (B) Strengthen prompt for system
-                {"role": "system", "content": (
-                    "You are a helpful financial advisor. "
-                    "Answer ONLY in valid JSON with the keys: "
-                    "recommendedRewardType, recommendedCard, explanation."
-                )},
+                {"role": "system", "content": "You are a helpful financial advisor. Answer ONLY in valid JSON."},
                 {"role": "user", "content": final_prompt}
             ],
             max_tokens=500
         )
 
-        # Extract the raw text
         gpt_content = response.choices[0].message.content.strip()
-
-        # (A) Print raw response for debugging
-
-        # Attempt to parse the JSON
         gpt_json = json.loads(gpt_content)
 
         recommended_reward_type = gpt_json.get("recommendedRewardType", None)
@@ -536,21 +543,38 @@ def analyze_rewards():
             log_recommendation(user_id, data, recommended_card)
     except Exception as e:
         print(f"ChatGPT error: {e}")
-        # Fallback
         recommended_reward_type = None
         recommended_card = None
-        explanation = (
-            "Unable to generate AI-based analysis at this time. "
-            "Here is the table of returns for your reference."
-        )
+        explanation = "Unable to generate AI-based analysis. Here's the rewards table."
 
-    # 5. Return final JSON
     return jsonify({
         "analysisResults": analysis_results,
         "explanation": explanation,
         "recommendedCard": recommended_card,
         "recommendedRewardType": recommended_reward_type
     }), 200
+
+def is_benefit_relevant_to_merchant(benefit_description, merchant_name):
+    prompt = f"""
+You're an expert in matching credit card benefits to merchants. Given the benefit description:
+"{benefit_description}"
+and the merchant name "{merchant_name}", is this benefit relevant to the merchant?
+Return JSON: {{"relevant": true}} or {{"relevant": false}} only.
+"""
+    try:
+        resp = ai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You answer strictly in JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100
+        )
+        content = resp.choices[0].message.content.strip()
+        return json.loads(content).get("relevant", False)
+    except Exception as e:
+        print(f"is_benefit_relevant_to_merchant error: {e}")
+        return False
 
 # ----------------------------------------------------------------------
 # Example: get_best_category_for_merchant
@@ -648,6 +672,39 @@ def delete_card(card_id):
         db.session.rollback()
         return jsonify({"error": "An error occurred while deleting the card"}), 500
 
+@main.route('/api/profile', methods=['GET'])
+@login_required
+def get_profile():
+    user = current_user
+    base64_pic = ""
+    if user.profile_pic:
+        # Suppose you store everything as a PNG; or you can store the MIME type in the DB.
+        base64_bytes = base64.b64encode(user.profile_pic).decode('utf-8')
+        base64_pic = f"data:image/png;base64,{base64_bytes}"
+
+    return jsonify({
+        "firstName": user.first_name,
+        "lastName": user.last_name,
+        "profilePic": base64_pic
+    })
+@main.route('/api/profile', methods=['PUT'])
+@login_required
+def update_profile():
+    user = current_user
+    user.first_name = request.form.get("firstName", user.first_name)
+    user.last_name = request.form.get("lastName", user.last_name)
+    
+    # Handle file upload from multipart/form-data
+    file = request.files.get("profilePic")
+    if file:
+        # Optionally, you can use secure_filename if you need a file name.
+        # Here we just store the binary data.
+        user.profile_pic = file.read()  # Save the file's binary content in the DB
+
+    db.session.commit()
+    return jsonify({"message": "Profile updated successfully"})
+
+
 @main.route('/api/analyze_dom', methods=['POST'])
 def analyze_dom():
     """Analyze DOM content and extract transaction details using GPT."""
@@ -696,6 +753,37 @@ def analyze_dom():
     except Exception as e:
         print(f"something else Failed: {e}")
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+@main.route('/api/get_card_benefits', methods=['GET'])
+@login_required
+def get_all_card_benefits_route():
+    # Expect issuer and cardType as query parameters
+    issuer = request.args.get('issuer')
+    card_type = request.args.get('cardType')
+    
+    if not issuer or not card_type:
+        return jsonify({"error": "Missing required parameters: issuer and cardType"}), 400
+
+    # Look up the card data from the local credit cards database
+    card_data = credit_cards_db.get(issuer, {}).get(card_type, {})
+    if not card_data:
+        return jsonify({"error": "No data found for the specified card"}), 404
+
+    # Prepare the result, only including nonempty sections
+    result = {}
+    for section in [
+        "rewards_structure",
+        "redemption",
+        "additional_benefits",
+        "seasonal_benefits",
+        "quarterly_categories",
+    ]:
+        value = card_data.get(section)
+        # Only include the section if it is a nonempty dict
+        if isinstance(value, dict) and len(value) > 0:
+            result[section] = value
+
+    return jsonify(result), 200
 
 @main.route('/api/get_card_options', methods=['GET'])
 def get_card_options():
@@ -839,13 +927,28 @@ def get_full_card_details():
 @login_required
 def get_recommendation_history():
     """Fetch recommendation history for the logged-in user."""
-    start_date = request.args.get('start_date', None)
-    end_date = request.args.get('end_date', None)
+    start_date_str = request.args.get('start_date', None)
+    end_date_str = request.args.get('end_date', None)
 
     query = RecommendationHistory.query.filter_by(user_id=current_user.id)
 
-    if start_date and end_date:
-        query = query.filter(RecommendationHistory.date.between(start_date, end_date))
+    # Only apply the date filter if both start_date and end_date are provided
+    if start_date_str and end_date_str:
+        # Parse the incoming date strings (expected format: "YYYY-MM-DD")
+        try:
+            start_date_obj = dt.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date_obj = dt.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+
+            # If your data is stored as a DateTime and you want everything up to the
+            # end of the end_date, you can add a day minus 1 second to end_date_obj:
+            # end_date_dt = datetime.combine(end_date_obj, datetime.max.time())
+
+            # If stored as a Date column, .between() should work directly with .date()
+            query = query.filter(RecommendationHistory.date.between(start_date_obj, end_date_obj))
+        except ValueError:
+            # If parsing fails, you might want to handle it or return an error.
+            pass
 
     history = query.order_by(RecommendationHistory.date).all()
 
@@ -854,7 +957,8 @@ def get_recommendation_history():
             "date": record.date.strftime('%Y-%m-%d'),
             "amount": record.amount,
             "recommended_card": record.recommended_card
-        } for record in history
+        } 
+        for record in history
     ])
 
 def log_recommendation(user_id, transaction_details, recommended_card):

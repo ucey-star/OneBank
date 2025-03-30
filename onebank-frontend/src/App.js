@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import Dashboard from "./pages/Dashboard";
 import Playground from "./pages/Playground";
+import ProfilePage from "./pages/ProfilePage";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -21,6 +22,7 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/playground" element={<Playground />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </Router>
     </GoogleOAuthProvider>
