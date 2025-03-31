@@ -28,9 +28,15 @@ export default function LoginPage() {
 
   function handleGoogleLogin() {
     // Notice the "?react=1" at the end
-    const googleLoginURL = `${
-      process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000"
-    }/login/google?react=1`;
+    if (!process.env.REACT_APP_API_BASE_URL) {
+      throw new Error(
+        "Missing REACT_APP_API_BASE_URL in the environment variables. Please set it and rebuild."
+      );
+    }
+    // Use the environment variable directly
+    const BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+    const googleLoginURL = `${BASE_URL}/login/google?react=1`;
   
     const width = 600,
       height = 600;

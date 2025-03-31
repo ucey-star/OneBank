@@ -4,7 +4,8 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+load_dotenv(os.path.join(basedir, '.env'))
 
 # Create the app
 app = create_app()

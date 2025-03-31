@@ -1,5 +1,11 @@
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000"; // Default to localhost if env variable is missing
-// const BASE_URL ="http://127.0.0.1:5000"; 
+if (!process.env.REACT_APP_API_BASE_URL) {
+    throw new Error(
+      "Missing REACT_APP_API_BASE_URL in the environment variables. Please set it and rebuild."
+    );
+  }
+  
+  // Use the environment variable directly
+  const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 export async function downloadExtension() {
     const downloadUrl = `${BASE_URL}/download-extension`;

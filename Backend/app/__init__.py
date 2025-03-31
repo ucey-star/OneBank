@@ -8,9 +8,8 @@ from dotenv import load_dotenv
 import openai
 import os
 from flask_session import Session
+from app.routes import register_blueprints
 
-# Load environment variables
-load_dotenv()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -57,8 +56,11 @@ def create_app():
     db.init_app(app)
     Migrate(app, db)
     login_manager.init_app(app)
-    login_manager.login_view = 'main.login'
+    login_manager.login_view = 'auth_bp.login'
     oauth.init_app(app)
+
+    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    load_dotenv(os.path.join(basedir, '.env'))
 
     oauth.register(
         name='google',
@@ -77,8 +79,9 @@ def create_app():
     setup_openai()
 
     # Register routes
-    from .routes import main as main_routes
-    app.register_blueprint(main_routes, url_prefix='/')
+    # from .routes import main as main_routes
+    # app.register_blueprint(main_routes, url_prefix='/')
+    register_blueprints(app)
 
     # Create database tables
     with app.app_context():

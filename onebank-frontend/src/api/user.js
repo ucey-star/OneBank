@@ -1,4 +1,11 @@
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+if (!process.env.REACT_APP_API_BASE_URL) {
+  throw new Error(
+    "Missing REACT_APP_API_BASE_URL in the environment variables. Please set it and rebuild."
+  );
+}
+
+// Use the environment variable directly
+const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Update default reward type for user
 export async function updateDefaultRewardType(rewardType) {

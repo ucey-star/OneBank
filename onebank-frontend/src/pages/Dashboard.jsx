@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { checkAuthStatus, logoutUser } from "../api/auth";
 import { fetchUserCards, deleteUserCard } from "../api/credit_cards";
 import { downloadExtension } from "../api/extension";
@@ -26,6 +26,8 @@ export default function Dashboard() {
   const [cardToEdit, setCardToEdit] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
+  const [userFirstName, setUserFirstName] = useState("");
+
 
   useEffect(() => {
     async function verifyUser() {
@@ -33,6 +35,7 @@ export default function Dashboard() {
         const data = await checkAuthStatus(); // { isLoggedIn: boolean }
         if (data.isLoggedIn) {
           setIsAuthed(true);
+          setUserFirstName(data.firstName || "");
         } else {
           navigate("/login");
         }
@@ -76,10 +79,22 @@ export default function Dashboard() {
         useModalOverlay: true, // Ensure the modal overlay is enabled
       });
 
+      // tour.addStep({
+      //   id: "header",
+      //   text: "This is the header with navigation. Here you can download the extension, access the playground, or log out.",
+      //   attachTo: { element: "#header", on: "bottom" },
+      //   buttons: [
+      //     {
+      //       text: "Next",
+      //       action: tour.next,
+      //     },
+      //   ],
+      // });
+
       tour.addStep({
-        id: "header",
-        text: "This is the header with navigation. Here you can download the extension, access the playground, or log out.",
-        attachTo: { element: "#header", on: "bottom" },
+        id: "reward-selector",
+        text: "This is the Default Reward Type Selector. Set your preferred reward type here.",
+        attachTo: { element: "#reward-selector", on: "bottom" },
         buttons: [
           {
             text: "Next",
@@ -89,9 +104,9 @@ export default function Dashboard() {
       });
 
       tour.addStep({
-        id: "reward-selector",
-        text: "This is the Default Reward Type Selector. Set your preferred reward type here.",
-        attachTo: { element: "#reward-selector", on: "bottom" },
+        id: "card-overview",
+        text: "This section displays your credit cards. You can add, edit, or delete cards here.",
+        attachTo: { element: "#card-overview", on: "bottom" },
         buttons: [
           {
             text: "Back",
@@ -104,10 +119,12 @@ export default function Dashboard() {
         ],
       });
 
+      
+
       tour.addStep({
-        id: "card-overview",
-        text: "This section displays your credit cards. You can add, edit, or delete cards here.",
-        attachTo: { element: "#card-overview", on: "top" },
+        id: "profile-button",
+        text: "Click here to view your profile.",
+        attachTo: { element: "#profile-button", on: "bottom" },
         buttons: [
           {
             text: "Back",
@@ -124,6 +141,22 @@ export default function Dashboard() {
         id: "extension-download",
         text: "Click here to download our browser extension.",
         attachTo: { element: "#extension-download", on: "bottom" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "playground-button",
+        text: "Click here to visit the playground.",
+        attachTo: { element: "#playground-button", on: "bottom" },
         buttons: [
           {
             text: "Back",
@@ -221,11 +254,14 @@ export default function Dashboard() {
       {/* -- Header -- */}
       <header id="header" className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-2xl font-bold text-gray-800">
+          <Link to="/">
             One<span className="text-blue-600">Bank</span>
-          </h1>
+          </Link>
+        </h1>
           <nav className="flex space-x-6">
           <button
+              id="profile-button"
               onClick={() => navigate("/profile")}
               className="text-gray-600 hover:text-blue-600 font-medium transition"
             >
@@ -239,6 +275,7 @@ export default function Dashboard() {
               Download Extension
             </button>
             <button
+              id="playground-button"
               onClick={() => navigate("/playground")}
               className="text-gray-600 hover:text-blue-600 font-medium transition"
             >
@@ -258,7 +295,7 @@ export default function Dashboard() {
       <main className="flex-grow" id="dashboard-overview">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <h2 className="text-3xl font-semibold text-gray-800 mb-6">
-            Welcome back!
+          {userFirstName ? `Welcome back, ${userFirstName}!` : "Welcome back!"}
           </h2>
 
           <div id="reward-selector">
