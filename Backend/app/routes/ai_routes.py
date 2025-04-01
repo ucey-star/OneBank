@@ -270,6 +270,10 @@ def analyze_rewards():
     except (ValueError, TypeError):
         amount = 0.0
 
+    # Get current date information for seasonal and quarterly benefits
+    current_date = dt.datetime.now()
+    current_quarter = f"Q{(current_date.month - 1) // 3 + 1} {current_date.year}"
+    
     user_id = current_user.id
     user_cards = fetch_user_credit_cards(user_id)
     if not user_cards:
@@ -288,6 +292,7 @@ def analyze_rewards():
         card_data = credit_cards_db.get(issuer, {}).get(card_type, {})
         rewards_structure = card_data.get("rewards_structure", {})
         redemption_info = card_data.get("redemption", {})
+        quarterly_categories = card_data.get("quarterly_categories", {})
 
         row = {
             "cardName": f"{card_type}",
@@ -296,9 +301,37 @@ def analyze_rewards():
             "points": "N/A"
         }
 
-        # Evaluate 'cashback'
+        # Check for active quarterly categories
+        active_quarterly_categories = []
+        for quarter_key, quarter_info in quarterly_categories.items():
+            # Check if this quarter is active now
+            if is_timeframe_active(quarter_info.get("Timeframe", ""), current_date):
+                categories = quarter_info.get("Categories", [])
+                if isinstance(categories, list):
+                    active_quarterly_categories.extend(categories)
+                elif isinstance(categories, str) and categories != "To be announced":
+                    active_quarterly_categories.append(categories)
+
+        # Evaluate 'cashback' with quarterly categories
         if "cashback" in rewards_structure:
-            best_cat = get_best_category_for_merchant(merchant, "cashback", list(rewards_structure["cashback"].keys()))
+            # Add quarterly categories to the list of potential categories if available
+            all_categories = list(rewards_structure["cashback"].keys())
+            
+            # If there are active quarterly categories and the card supports them
+            if active_quarterly_categories and "Quarterly bonus categories" in rewards_structure["cashback"]:
+                # Let GPT decide if the merchant fits into any of the quarterly categories
+                if active_quarterly_categories:
+                    quarterly_match = check_if_merchant_matches_categories(merchant, active_quarterly_categories)
+                    if quarterly_match:
+                        multiplier = rewards_structure["cashback"]["Quarterly bonus categories"]
+                        row["cashback"] = multiplier * 100
+                        # Add note about quarterly category match
+                        if "Current Quarterly Categories" not in row:
+                            row["Current Quarterly Categories"] = ", ".join(active_quarterly_categories)
+                        continue  # Skip the regular category matching
+            
+            # Regular category matching
+            best_cat = get_best_category_for_merchant(merchant, "cashback", all_categories)
             if best_cat not in rewards_structure["cashback"]:
                 if "Everything else" in rewards_structure["cashback"]:
                     multiplier = rewards_structure["cashback"]["Everything else"]
@@ -306,6 +339,7 @@ def analyze_rewards():
                     multiplier = average_multiplier(rewards_structure["cashback"])
             else:
                 multiplier = rewards_structure["cashback"][best_cat]
+            
             row["cashback"] = multiplier * 100
 
         # Evaluate 'miles'
@@ -338,12 +372,25 @@ def analyze_rewards():
 
         analysis_results.append(row)
 
-        # Additional benefits
+        # Process additional benefits including active seasonal benefits
         seasonal = card_data.get("seasonal_benefits", {})
         additional = card_data.get("additional_benefits", {})
         db_socialized = card_data.get("socialized_benefits", {})
 
-        all_extras = {**seasonal, **additional, **db_socialized}
+        # Filter seasonal benefits to only include active ones
+        active_seasonal = {}
+        for benefit_name, benefit_info in seasonal.items():
+            if isinstance(benefit_info, dict) and "timeframe" in benefit_info:
+                if is_timeframe_active(benefit_info["timeframe"], current_date):
+                    active_seasonal[benefit_name] = benefit_info
+        
+        # Combine active seasonal benefits with other benefits
+        all_extras = {**active_seasonal, **additional, **db_socialized}
+        
+        # Add quarterly category information if relevant
+        if active_quarterly_categories:
+            all_extras["Current Quarterly Categories"] = ", ".join(active_quarterly_categories)
+            
         relevant_extras = []
         for label, detail in all_extras.items():
             benefit_str = detail if isinstance(detail, str) else json.dumps(detail)
@@ -357,6 +404,7 @@ def analyze_rewards():
     prompt_lines = [
         f"Merchant: {merchant}, transaction amount: ${amount:.2f}",
         f"Your chosen reward type: {user_selected_type}",
+        f"Current date: {current_date.strftime('%B %d, %Y')} (Q{(current_date.month - 1) // 3 + 1} {current_date.year})",
         "Here is the reward table (columns: cashback, miles, points are in %):"
     ]
     for row in analysis_results:
@@ -374,7 +422,8 @@ Personalized Instructions:
 2. Only recommend extra benefits (like subscriptions or bonus categories) if relevant to the merchant.
 3. Focus on the user's chosen reward type, but if it's suboptimal, explain why and offer a better choice.
 4. Reference the reward % and extra perks where appropriate.
-5. Return strictly JSON with keys: recommendedRewardType, recommendedCard, explanation.
+5. If seasonal or quarterly benefits apply, highlight them specifically.
+6. Return strictly JSON with keys: recommendedRewardType, recommendedCard, explanation.
 """)
 
     final_prompt = "\n".join(prompt_lines)
@@ -407,6 +456,103 @@ Personalized Instructions:
         "recommendedCard": recommended_card,
         "recommendedRewardType": recommended_reward_type
     }), 200
+
+# Helper function to check if a timeframe is currently active
+def is_timeframe_active(timeframe_str, current_date):
+    """Determine if a timeframe string is currently active."""
+    try:
+        # Handle common patterns like "Through March 2025", "January 1 – March 31, 2025"
+        timeframe_lower = timeframe_str.lower()
+        
+        # Case 1: "Through [Month] [Year]" or "Until [Month] [Year]"
+        if "through" in timeframe_lower or "until" in timeframe_lower:
+            # Extract month and year
+            parts = timeframe_lower.replace("through", "").replace("until", "").strip().split()
+            if len(parts) >= 2:
+                month_name = parts[0].capitalize()
+                year = int(parts[-1])
+                # Convert month name to number
+                month_num = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
+                             "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}.get(month_name, 12)
+                
+                end_date = dt.datetime(year, month_num, 28)  # Use 28th as a safe day
+                return current_date <= end_date
+        
+        # Case 2: "January 1 – March 31, 2025" format
+        elif "–" in timeframe_str or "-" in timeframe_str:
+            delimiter = "–" if "–" in timeframe_str else "-"
+            parts = timeframe_str.split(delimiter)
+            if len(parts) == 2:
+                start_part = parts[0].strip()
+                end_part = parts[1].strip()
+                
+                # Parse end date which has the year
+                end_parts = end_part.replace(",", "").split()
+                if len(end_parts) >= 2:
+                    end_month = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
+                                 "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}.get(end_parts[0], 1)
+                    end_day = int(''.join(filter(str.isdigit, end_parts[1])))
+                    end_year = int(end_parts[-1])
+                    
+                    # Parse start date
+                    start_parts = start_part.split()
+                    start_month = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
+                                   "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}.get(start_parts[0], 1)
+                    start_day = int(''.join(filter(str.isdigit, start_parts[1])))
+                    start_year = end_year  # Assume same year unless specified
+                    
+                    start_date = dt.datetime(start_year, start_month, start_day)
+                    end_date = dt.datetime(end_year, end_month, end_day)
+                    
+                    return start_date <= current_date <= end_date
+        
+        # Case 3: "Activate by [Date]" - assume active if current date is before activation deadline
+        elif "activate by" in timeframe_lower:
+            parts = timeframe_lower.replace("activate by", "").strip().split()
+            if len(parts) >= 2:
+                month_name = parts[0].capitalize()
+                day = int(''.join(filter(str.isdigit, parts[1])))
+                year = int(parts[-1])
+                
+                month_num = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
+                             "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12}.get(month_name, 12)
+                
+                deadline = dt.datetime(year, month_num, day)
+                return current_date <= deadline
+    
+    except Exception as e:
+        print(f"Error parsing timeframe '{timeframe_str}': {e}")
+    
+    # Default to not active if we can't parse the timeframe
+    return False
+
+# Use GPT to check if a merchant matches any of the active quarterly categories
+def check_if_merchant_matches_categories(merchant, categories):
+    """Use GPT to determine if a merchant fits into any of the provided categories."""
+    categories_str = ", ".join(categories)
+    prompt = f"""
+You are an expert in categorizing merchants.
+Merchant name: "{merchant}"
+Potential categories: {categories_str}
+
+Does this merchant belong to any of these categories? Consider typical purchases at this merchant.
+Return strictly JSON: {{"matches": true}} or {{"matches": false}}. No explanation needed.
+"""
+    try:
+        resp = get_ai_client().chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You answer strictly in JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50
+        )
+        content = resp.choices[0].message.content.strip()
+        result = json.loads(content)
+        return result.get("matches", False)
+    except Exception as e:
+        print(f"Error checking if merchant matches categories: {e}")
+        return False
 
 # -----------------------------------------------------------
 #   /api/get_card_advice

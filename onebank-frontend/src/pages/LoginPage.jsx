@@ -15,7 +15,7 @@ export default function LoginPage() {
   async function handleLogin(e) {
     e.preventDefault();
     try {
-      const data = await loginUser(email, password);
+      await loginUser(email, password);
       toast.success("Log in successful");
       setEmail("");
       setPassword("");
@@ -56,7 +56,7 @@ export default function LoginPage() {
     // Listen for postMessage from the popup
     const messageListener = (event) => {
       // Optionally validate event.origin
-      const { success, user, message } = event.data;
+      const { success, message } = event.data;
       if (success) {
         toast.success(message);
         // e.g. store user in context or state
