@@ -30,7 +30,7 @@ def test_get_best_card(transaction_cases, monkeypatch):
     Test if the get_best_card endpoint returns the expected best card based on merchant and amount.
     """
     # Replace the real database fetch function with our mock
-    monkeypatch.setattr('app.routes.fetch_user_credit_cards', mock_fetch_user_credit_cards)
+    monkeypatch.setattr('app.routes.card_routes.fetch_user_credit_cards', mock_fetch_user_credit_cards)
     
     for case in transaction_cases:
         transaction_details = {
