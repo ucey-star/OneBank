@@ -72,28 +72,34 @@ function getTextFromSelectors(selectors) {
     return null;
 }
 
-// Function to extract the domain name
 function getDomainName(hostname) {
-    let domain = hostname.toLowerCase().replace(/^www\./, '');
-    const parts = domain.split('.');
-    if (parts.length > 2) {
-        const tld = parts[parts.length - 1];
-        const sld = parts[parts.length - 2];
-        const ccTLDs = ['co', 'com', 'net', 'org', 'gov', 'edu', 'ac'];
-        if (ccTLDs.includes(sld)) {
-            domain = parts.slice(-3).join('.');
-        } else {
-            domain = parts.slice(-2).join('.');
-        }
-    } else {
-        domain = parts.join('.');
+    // Normalize
+    let domain = hostname.trim().toLowerCase();
+    domain = domain.replace(/^https?:\/\//, "").split("/")[0];
+  
+    const knownSubdomains = ["www", "m", "dev", "mail", "ftp"];
+    let parts = domain.split(".");
+    while (parts.length > 2 && knownSubdomains.includes(parts[0])) {
+      parts.shift(); // remove known subdomains
     }
-    const domainParts = domain.split('.');
-    return domainParts.length >= 2
-        ? domainParts[domainParts.length - 2].charAt(0).toUpperCase() + domainParts[domainParts.length - 2].slice(1)
-        : domain;
-}
-
+  
+    const knownTwoPartTLDs = [
+      "co.uk", "org.uk", "ac.uk", "gov.uk",
+      "co.nz", "co.au", "com.au", "net.au", "org.au",
+      "co.jp", "co.kr", "co.in", "co.za", "com.sg"
+    ];
+  
+    const last2 = parts.slice(-2).join(".");
+    const last3 = parts.slice(-3).join(".");
+    const hasTwoPartTLD = knownTwoPartTLDs.includes(last2);
+  
+    let baseDomainParts = hasTwoPartTLD ? parts.slice(-3) : parts.slice(-2);
+    const mainDomain = baseDomainParts[baseDomainParts.length - (hasTwoPartTLD ? 3 : 2)];
+  
+    // Capitalize and return
+    return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+  }
+  
 // Function to find the total amount from multiple matches
 function findTotalAmount(pageText, amounts) {
     const lines = pageText.split('\n');

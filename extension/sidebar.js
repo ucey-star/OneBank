@@ -6,6 +6,7 @@ let userFirstName = "";
 let lastMerchant = "Unknown";
 let lastAmount = "Unknown";
 let defaultRewardType = "";
+let autoChecked = false;
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -45,12 +46,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // Clear login state from local storage and update UI
                 chrome.storage.local.set({ isLoggedIn: false, userFirstName: "", defaultRewardType: ""}, () => {
                     isLoggedIn = false;
-                    updateExtractionButton(false);
                     logoutButton.style.display = "none";
-                    resetPlugin();
                     statusElement.textContent = "Logged out successfully.";
                      // Clear the welcome text
             const welcomeText = document.getElementById("welcome-text");
+            resetPlugin();
             if (welcomeText) {
                 welcomeText.textContent = "";
             }
@@ -139,10 +139,13 @@ function showEditableForm(merchant, amount) {
     
     // Fetch user's default reward type from storage and set it
     chrome.storage.local.get(["defaultRewardType"], (data) => {
-        const savedRewardType = data.defaultRewardType || "cashback"; // fallback default
-        rewardSelect.value = savedRewardType;
-    });
+        console.log("🔍 Retrieved defaultRewardType from storage:", data.defaultRewardType);
+        defaultRewardType = data.defaultRewardType || "cashback";
+        rewardSelect.value = defaultRewardType;
 
+        validateFields();
+    });
+    
     // Grab references
     const merchantInput = document.getElementById('merchant-input');
     const amountInput = document.getElementById('amount-input');
@@ -158,43 +161,47 @@ function showEditableForm(merchant, amount) {
         const amountVal = amountInput.value.trim();
         const rewardType = rewardSelect.value; 
 
+        console.log("elcted reward type", rewardType);
+    
         let isValid = true;
         let errorMsg = "";
-
+    
         // 1) Merchant must not be "Unknown" or empty
         if (!merchantVal || merchantVal.toLowerCase() === "unknown") {
             isValid = false;
             errorMsg += "• Please provide a valid merchant (not 'Unknown').\n";
         }
-
+    
         // 2) Amount must be numeric or currency-like
         // We'll accept digits, optional $, optional decimal
-        // Example pattern: ^(\$?\d+(\.\d{1,2})?)$
         const currencyPattern = /^(\$?\d+(\.\d+)?)$/;
         if (!currencyPattern.test(amountVal)) {
             isValid = false;
             errorMsg += "• Please enter a valid amount (e.g. 12.99 or $12.99).\n";
         }
-
+    
         // If invalid, show errors and disable submit
         if (!isValid) {
             errorDiv.textContent = errorMsg.trim();
             submitButton.disabled = true;
             bestCardButton.disabled = true;
         } else {
-            // Clear errors, enable submit
+            // Clear any errors
             errorDiv.textContent = "";
             submitButton.disabled = false;
             bestCardButton.disabled = false;
-
-            // Debounce auto-update: clear any previous timer and set a new one
-            if (autoUpdateTimer) {
-                clearTimeout(autoUpdateTimer);
+    
+            // Only auto-check once
+            if (!autoChecked) {
+                // Debounce auto-update
+                if (autoUpdateTimer) {
+                    clearTimeout(autoUpdateTimer);
+                }
+                autoUpdateTimer = setTimeout(() => {
+                    autoChecked = true; // Mark as done
+                    handleRewardCheck(merchantVal, amountVal, rewardType, true);
+                }, 500);
             }
-            autoUpdateTimer = setTimeout(() => {
-                // Call handleRewardCheck automatically in bestCardOnly mode
-                handleRewardCheck(merchantVal, amountVal, rewardType, true);
-            }, 300);
         }
     }
 
@@ -244,6 +251,7 @@ function handleRewardCheck(merchant, amount, rewardType, bestCardOnly = false) {
             // If the reward type is suitable, continue with analysis
             handleEditedDataWithReward(merchant, amount, rewardType,  bestCardOnly);
         } else {
+            console.log("rewardType", rewardType);
             // Otherwise, show a warning with the suggested reward type
             showRewardWarning(response.suggestedRewardType, merchant, amount, rewardType, bestCardOnly);
         }
@@ -288,6 +296,9 @@ function showRewardWarning(suggestedReward, merchant, amount, currentReward, bes
 }
 
 async function handleEditedDataWithReward(merchant, amount, rewardType, bestCardOnly = false) {
+    if (!isLoggedIn) {
+        return;
+    }
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.style.display = 'block';
     recommendationContainer.innerHTML = "<div class='spinner'></div>";
@@ -525,7 +536,7 @@ function showLoginForm() {
               {
                 isLoggedIn: true,
                 userFirstName: response.user.first_name,
-                defaultRewardType: response.user.default_reward_type
+                defaultRewardType: response.user.default_reward_type.toLowerCase()
               },
               () => {
                 // Update the UI
@@ -533,7 +544,8 @@ function showLoginForm() {
                 document.getElementById('welcome-text').textContent = `Hello, ${response.user.first_name}!`;
                 document.getElementById('plugin-status').textContent = "Logged in successfully via Google!";
                 formContainer.style.display = 'none';
-                defaultRewardType = response.user.default_reward_type;
+                defaultRewardType = response.user.default_reward_type.toLowerCase();
+                isLoggedIn =  true
               }
             );
       
@@ -577,7 +589,7 @@ function showLoginForm() {
                 if (response.success) {
                     // Update local storage and UI
                     chrome.storage.local.set(
-                        { isLoggedIn: true, userFirstName: response.user.first_name, defaultRewardType: response.user.default_reward_type }, 
+                        { isLoggedIn: true, userFirstName: response.user.first_name, defaultRewardType: response.user.default_reward_type.toLowerCase() }, 
                         () => {
                             document.getElementById('welcome-text').textContent = 
                                 `Hello, ${response.user.first_name}!`;
@@ -585,7 +597,8 @@ function showLoginForm() {
                                 "Logged in successfully!";
                             // Hide login form
                             formContainer.style.display = 'none';
-                            defaultRewardType = response.user.default_reward_type;
+                            defaultRewardType = response.user.default_reward_type.toLowerCase();
+                            isLoggedIn =  true
                         }
                     );
 
@@ -612,6 +625,7 @@ function resetPlugin() {
     const recommendationContainer = document.getElementById('recommendation-container');
     recommendationContainer.innerHTML = "";
     recommendationContainer.style.display = 'none';
+    autoChecked = false;
 
     // 2. Clear/hide the form container
     const formContainer = document.getElementById('form-container');

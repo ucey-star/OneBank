@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { checkAuthStatus, logoutUser } from "../api/auth";
 import { fetchUserCards, getCardAdvice } from "../api/credit_cards";
 
+// Shepherd imports
+import Shepherd from "shepherd.js";
+import "shepherd.js/dist/css/shepherd.css";
+import "./styles/shepherd-custom.css"; // Optional custom overrides
+
 export default function Playground() {
   const navigate = useNavigate();
   const [isAuthed, setIsAuthed] = useState(false);
@@ -49,6 +54,83 @@ export default function Playground() {
       } finally {
         setCardsLoading(false);
       }
+    }
+  }, [isAuthed]);
+
+  // -------------------- Shepherd.js Onboarding --------------------
+  useEffect(() => {
+    if (isAuthed && !localStorage.getItem("hasSeenPlaygroundTour")) {
+      // Create the tour with overlay enabled
+      const tour = new Shepherd.Tour({
+        defaultStepOptions: {
+          classes: "shepherd-theme-arrows",
+          scrollTo: { behavior: "smooth", block: "center" },
+        },
+        useModalOverlay: true,
+      });
+
+      tour.addStep({
+        id: "merchant-step",
+        text: "Enter a merchant here, like 'Amazon' or 'Starbucks'.",
+        attachTo: { element: "#merchant-input", on: "bottom" },
+        buttons: [
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "amount-step",
+        text: "Enter the transaction amount you want to simulate.",
+        attachTo: { element: "#amount-input", on: "bottom" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "onecard-step",
+        text: "This is the all-in-one OneCard you can drag onto the POS terminal to simulate a purchase.",
+        attachTo: { element: "#onecard", on: "right" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Next",
+            action: tour.next,
+          },
+        ],
+      });
+
+      tour.addStep({
+        id: "pos-step",
+        text: "Drag the OneCard into this terminal to see which real card is recommended for your transaction.",
+        attachTo: { element: "#pos-terminal", on: "left" },
+        buttons: [
+          {
+            text: "Back",
+            action: tour.back,
+          },
+          {
+            text: "Done",
+            action: tour.complete,
+          },
+        ],
+      });
+
+      tour.start();
+      localStorage.setItem("hasSeenPlaygroundTour", "true");
     }
   }, [isAuthed]);
 
@@ -109,7 +191,7 @@ export default function Playground() {
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* -- Header -- */}
-      <header className="bg-white shadow">
+      <header id="header" className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">
             One<span className="text-blue-600">Bank</span> Playground
@@ -154,7 +236,7 @@ export default function Playground() {
                 </label>
                 <input
                   type="text"
-                  id="merchant"
+                  id="merchant-input"
                   value={merchant}
                   onChange={(e) => setMerchant(e.target.value)}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
@@ -172,7 +254,7 @@ export default function Playground() {
                 </label>
                 <input
                   type="number"
-                  id="amount"
+                  id="amount-input"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
@@ -194,6 +276,7 @@ export default function Playground() {
                 Your All-in-One Card
               </h3>
               <div
+                id="onecard"
                 draggable
                 onDragStart={handleDragStart}
                 className="relative p-6 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl shadow-lg text-white cursor-move select-none"
@@ -214,7 +297,12 @@ export default function Playground() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l.667 2.055a1 1 0 00.95.69h2.29c.969 0 1.371 1.24.588 1.81l-1.852 1.35a1 1 0 00-.364 1.118l.667 2.055c.3.921-.755 1.688-1.538 1.118l-1.852-1.35a1 1 0 00-1.175 0l-1.852 1.35c-.783.57-1.838-.197-1.538-1.118l.667-2.055a1 1 0 00-.364-1.118L5.455 7.482c-.783-.57-.38-1.81.588-1.81h2.29a1 1 0 00.95-.69l.667-2.055z"
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l.667 2.055
+                      a1 1 0 00.95.69h2.29c.969 0 1.371 1.24.588 1.81l-1.852
+                      1.35a1 1 0 00-.364 1.118l.667 2.055c.3.921-.755 1.688-1.538
+                      1.118l-1.852-1.35a1 1 0 00-1.175 0l-1.852 1.35c-.783.57-1.838-.197-1.538-1.118l
+                      .667-2.055a1 1 0 00-.364-1.118L5.455
+                      7.482c-.783-.57-.38-1.81.588-1.81h2.29a1 1 0 00.95-.69l.667-2.055z"
                     />
                   </svg>
                 </div>
@@ -237,6 +325,7 @@ export default function Playground() {
                 POS Terminal
               </h3>
               <div
+                id="pos-terminal"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}

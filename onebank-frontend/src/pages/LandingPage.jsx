@@ -165,10 +165,10 @@ export default function LandingPage() {
             © {new Date().getFullYear()} OneBank. All rights reserved.
           </div>
           <div className="space-x-4">
-            <Link to="#" className="text-gray-600 hover:text-blue-600">
+            <Link to="/privacy-policy" className="text-gray-600 hover:text-blue-600">
               Privacy Policy
             </Link>
-            <Link to="#" className="text-gray-600 hover:text-blue-600">
+            <Link to="/terms-of-service" className="text-gray-600 hover:text-blue-600">
               Terms of Service
             </Link>
           </div>
