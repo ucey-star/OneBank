@@ -9,3 +9,4 @@ Backend/.DS_Store
 Backend/instance/
 Backend/migrations/
 Backend/.flask_session/
+Backend/app/routes/__pycache__/
