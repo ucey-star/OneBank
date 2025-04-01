@@ -1,6 +1,7 @@
 import json
 import pytest
 from app.routes.ai_routes import get_best_card
+import os
 
 # Load mock data from the JSON file
 with open('app/tests/data/mock_data.json') as f:
