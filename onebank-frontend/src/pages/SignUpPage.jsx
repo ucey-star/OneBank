@@ -14,8 +14,6 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
   const passwordCriteria = {
@@ -104,7 +102,7 @@ export default function SignUpPage() {
     // Listen for postMessage from the popup
     const messageListener = (event) => {
       // Optionally validate event.origin here for security
-      const { success, user, message } = event.data;
+      const { success, message } = event.data;
       if (success) {
         toast.success(message);
         // For example, store user data in state or context
@@ -126,17 +124,6 @@ export default function SignUpPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 shadow-md rounded">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">Sign Up</h1>
-
-          {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="bg-green-100 text-green-700 p-3 rounded mb-4">
-              {success}
-            </div>
-          )}
 
           <form onSubmit={handleSignUp}>
             {/* First Name */}

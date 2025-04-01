@@ -11,11 +11,10 @@ import "./styles/shepherd-custom.css"; // Optional custom overrides
 export default function Playground() {
   const navigate = useNavigate();
   const [isAuthed, setIsAuthed] = useState(false);
-  const [cards, setCards] = useState([]);
-  const [cardsLoading, setCardsLoading] = useState(true);
+  // These state variables are used by the backend but not rendered directly
+  const [isProcessing, setIsProcessing] = useState(false);
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
   const [recommendedCard, setRecommendedCard] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -39,20 +38,18 @@ export default function Playground() {
     verifyUser();
   }, [navigate]);
 
-  // Fetch user's cards (still needed for backend recommendations)
+  // Fetch user's cards (needed for backend recommendations)
   useEffect(() => {
     if (isAuthed) {
       loadUserCards();
     }
     async function loadUserCards() {
       try {
-        setCardsLoading(true);
-        const userCards = await fetchUserCards();
-        setCards(userCards);
+        await fetchUserCards();
+        // We don't need to store the cards or loading state in this component
+        // since they're only needed by the backend for recommendations
       } catch (err) {
         console.error("Error fetching cards:", err);
-      } finally {
-        setCardsLoading(false);
       }
     }
   }, [isAuthed]);
