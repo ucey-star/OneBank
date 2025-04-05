@@ -6,12 +6,62 @@ I'll update the README to reflect that your frontend directory is named "onebank
 
 One Bank is an innovative platform designed to help users optimize their credit card usage by dynamically recommending the best credit card for each transaction based on benefits like cashback.
 
+## Demo
+
+### website demo
+
+<div align="center">
+  <img src="./website-demo.gif" alt="OneBank Website Demo" width="300">
+</div>
+
+### plugin demo
+
+<div align="center">
+  <img src="./plugin-demo.gif" alt="OneBank Plugin Demo" width="300">
+</div>
+
 ## Features
 
-- User authentication and card management
-- Transaction recommendation system
-- Browser plugin for real-time credit card recommendations
-- Playground for testing card recommendations
+### 🔐 User Management and Card Portfolio
+- Secure user authentication with email/password and Google sign-in
+- Intuitive credit card portfolio management system
+- Card registration without storing sensitive financial information
+- Support for multiple card types and issuers
+- User preference settings for reward optimization (cashback, miles, points)
+
+### 🤖 Intelligent Recommendation Engine
+- AI-powered transaction categorization using OpenAI's GPT API
+- Real-time card selection optimization based on:
+  - Merchant type
+  - Transaction amount
+  - Specific card reward structures
+- Dynamic analysis of cashback and reward potential
+- Contextual recommendation system that adapts to unique transaction scenarios
+
+### 🌐 Browser Extension Capabilities
+- Automatic transaction data extraction from diverse e-commerce websites
+- Multi-strategy DOM parsing techniques:
+  - CSS selector-based extraction
+  - Regex pattern matching
+  - Contextual analysis for ambiguous transaction details
+- One-click card recommendation display
+- Merchant and transaction amount identification
+- Compatibility across multiple e-commerce platforms
+
+### 🎮 Interactive Playground
+- Drag-and-drop card simulation environment
+- Virtual point-of-sale transaction testing
+- Ability to input custom merchant names and transaction amounts
+- Detailed recommendation explanations
+- Visualization of potential rewards across different cards
+
+### 📊 Analytics and Insights
+- Transaction history tracking
+- Reward optimization visualization
+- Savings calculation compared to random card selection
+- Customizable date range filtering
+- Detailed transaction and recommendation logging
+
 
 ## Prerequisites
 
@@ -69,9 +119,9 @@ npm install
 npm run build
 ```
 
-4. Start the Node.js server to serve the frontend
+4. Start  the frontend
 ```bash
-node server.js
+npm start
 ```
 
 The server will serve the frontend application and properly handle all routes, ensuring that navigation to pages like `/login` and `/signup` works correctly.
@@ -108,5 +158,7 @@ The server.js file contains a simple Express configuration that:
 
 - Frontend: React, Tailwind CSS, Express.js (for serving the frontend)
 - Backend: Flask
-- Database: SQLite
+- Database: 
+  - development: SQLite
+  - production: postgreSQL
 - Browser Plugin: JavaScript, Chrome Extension API

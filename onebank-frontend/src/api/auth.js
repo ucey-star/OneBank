@@ -42,8 +42,8 @@ export async function registerUser(firstName, lastName, email, password) {
     }
     
     if (!response.ok) {
-      // The backend returns a 409 if the email is already in use
-      throw new Error("Signup failed. Email might already exist.");
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Signup failed. Please try again.");
     }
   
     // If 201 Created or another success code, parse JSON response

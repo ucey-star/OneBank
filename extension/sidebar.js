@@ -239,7 +239,7 @@ function showEditableForm(merchant, amount) {
 function handleRewardCheck(merchant, amount, rewardType, bestCardOnly = false) {
     const data = { merchant, amount, rewardType };
     // Adjust API_URL if necessary
-    fetch(`http://127.0.0.1:5000/api/check_reward_type`, {
+    fetch(`https://onebank.onrender.com/api/check_reward_type`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

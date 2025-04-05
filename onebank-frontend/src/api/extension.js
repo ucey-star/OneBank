@@ -8,12 +8,5 @@ if (!process.env.REACT_APP_API_BASE_URL) {
   const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 export async function downloadExtension() {
-    const downloadUrl = `${BASE_URL}/download-extension`;
-    
-    try {
-        // Trigger file download by setting the window location
-        window.location.href = downloadUrl;
-    } catch (error) {
-        console.error("Error downloading extension:", error);
-    }
+    window.location.href = "https://chromewebstore.google.com/detail/one-bank/mcphffopiondckeljgldjknjiicdhajd";
 }

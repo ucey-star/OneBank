@@ -6,7 +6,7 @@ import { FcGoogle } from "react-icons/fc"; // Import the Google icon
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
 
-const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])[^\s]{8,}$/;
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");

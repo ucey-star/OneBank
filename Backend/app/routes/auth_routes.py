@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, redirect, url_for, session
 from flask_login import login_user, logout_user, login_required, current_user
 from urllib.parse import urlencode
 import os
+import re
 
 from app.extensions import db, oauth
 from app.models import User
@@ -25,6 +26,10 @@ def check_status():
             "firstName": None
         })
 
+def is_strong_password(password):
+    # Match: at least 8 chars, one lowercase, one uppercase, one number, one special char
+    return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$', password))
+
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     """Register a new user."""
@@ -33,6 +38,9 @@ def signup():
     first_name = data.get("firstName")
     last_name = data.get("lastName")
     password = data.get("password")
+
+    if not is_strong_password(password):
+        return jsonify({"error": "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email already exists"}), 409
