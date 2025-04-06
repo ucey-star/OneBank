@@ -3,7 +3,6 @@ import { loginUser } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc"; // Google icon
 import Navbar from "../components/Navbar";
 
 export default function LoginPage() {
@@ -26,49 +25,6 @@ export default function LoginPage() {
     }
   }
 
-  function handleGoogleLogin() {
-    // Notice the "?react=1" at the end
-    if (!process.env.REACT_APP_API_BASE_URL) {
-      throw new Error(
-        "Missing REACT_APP_API_BASE_URL in the environment variables. Please set it and rebuild."
-      );
-    }
-    // Use the environment variable directly
-    const BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
-    const googleLoginURL = `${BASE_URL}/login/google?react=1`;
-  
-    const width = 600,
-      height = 600;
-    const left = window.innerWidth / 2 - width / 2;
-    const top = window.innerHeight / 2 - height / 2;
-    const popup = window.open(
-      googleLoginURL,
-      "GoogleLogin",
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-  
-    if (!popup) {
-      toast.error("Popup blocked. Please allow popups for this website.");
-      return;
-    }
-  
-    // Listen for postMessage from the popup
-    const messageListener = (event) => {
-      // Optionally validate event.origin
-      const { success, message } = event.data;
-      if (success) {
-        toast.success(message);
-        // e.g. store user in context or state
-        navigate("/dashboard");
-      } else {
-        toast.error("Google login failed");
-      }
-      window.removeEventListener("message", messageListener);
-    };
-  
-    window.addEventListener("message", messageListener, false);
-  }
   
   return (
     <>
@@ -125,24 +81,6 @@ export default function LoginPage() {
               Log In
             </button>
           </form>
-
-          {/* Divider with "OR" */}
-          <div className="flex items-center my-4">
-            <hr className="flex-grow border-t border-gray-300" />
-            <span className="mx-2 text-gray-500">OR</span>
-            <hr className="flex-grow border-t border-gray-300" />
-          </div>
-
-          {/* Google Sign-In Button */}
-          <div className="mt-4">
-            <button
-              onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-800 py-2 rounded hover:bg-gray-100 transition"
-            >
-              <FcGoogle className="inline-block mr-2" size={24} />
-              Sign In with Google
-            </button>
-          </div>
 
           <p className="mt-4 text-gray-600 text-sm">
             Don’t have an account?{" "}

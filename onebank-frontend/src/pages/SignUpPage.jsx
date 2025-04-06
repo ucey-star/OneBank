@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { registerUser } from "../api/auth"; // Import your API function
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc"; // Import the Google icon
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
 
@@ -73,49 +72,6 @@ export default function SignUpPage() {
     }
   }
 
-  function handleGoogleSignUp() {
-    // Append "?react=1" so the server knows this is a React flow
-    if (!process.env.REACT_APP_API_BASE_URL) {
-      throw new Error(
-        "Missing REACT_APP_API_BASE_URL in the environment variables. Please set it and rebuild."
-      );
-    }
-    // Use the environment variable directly
-    const BASE_URL = process.env.REACT_APP_API_BASE_URL;
-    const googleSignupURL = `${BASE_URL}/login/google?react=1`;
-  
-    const width = 600,
-      height = 600;
-    const left = window.innerWidth / 2 - width / 2;
-    const top = window.innerHeight / 2 - height / 2;
-    const popup = window.open(
-      googleSignupURL,
-      "GoogleSignUp",
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-  
-    if (!popup) {
-      toast.error("Popup blocked. Please allow popups for this website.");
-      return;
-    }
-  
-    // Listen for postMessage from the popup
-    const messageListener = (event) => {
-      // Optionally validate event.origin here for security
-      const { success, message } = event.data;
-      if (success) {
-        toast.success(message);
-        // For example, store user data in state or context
-        // Then navigate to your dashboard
-        navigate("/dashboard");
-      } else {
-        toast.error("Google signup failed");
-      }
-      window.removeEventListener("message", messageListener);
-    };
-  
-    window.addEventListener("message", messageListener, false);
-  }
   
 
   return (
@@ -213,23 +169,6 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          {/* Divider with "OR" */}
-          <div className="flex items-center my-4">
-            <hr className="flex-grow border-t border-gray-300" />
-            <span className="mx-2 text-gray-500">OR</span>
-            <hr className="flex-grow border-t border-gray-300" />
-          </div>
-
-          {/* Google Sign-Up Button */}
-          <div className="mt-4">
-            <button
-              onClick={handleGoogleSignUp}
-              className="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-800 py-2 rounded hover:bg-gray-100 transition"
-            >
-              <FcGoogle className="inline-block mr-2" size={24} />
-              Sign Up with Google
-            </button>
-          </div>
 
           <p className="mt-4 text-gray-600 text-sm">
             Already have an account?{" "}

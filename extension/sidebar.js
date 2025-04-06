@@ -508,17 +508,6 @@ function showLoginForm() {
       <div id="login-error" style="color: red; font-size: 0.9rem; margin-bottom: 0.5rem;"></div>
       <button id="login-submit" type="button" class="login-button">Login</button>
     </form>
-    <!-- Divider -->
-    <div class="divider" style="text-align: center; margin: 1rem 0;">
-      <hr style="display:inline-block; width:40%; vertical-align:middle;">
-      <span style="margin:0 0.5rem; color:#666;">OR</span>
-      <hr style="display:inline-block; width:40%; vertical-align:middle;">
-    </div>
-    <!-- Google Sign-In Button -->
-    <button id="google-login-button" class="google-login-button" style="width: 100%; padding: 0.8rem; border: 1px solid #ccc; background: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
-      <img src="icons/google_icon.webp" alt="Google Icon" class="google-icon" style="width:24px; height:24px; margin-right: 8px;" />
-      Sign In with Google
-    </button>
   `;
     formContainer.style.display = 'block';
 

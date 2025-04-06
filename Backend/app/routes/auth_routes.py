@@ -130,9 +130,9 @@ def google_auth():
             "default_reward_type": user.default_reward_type
         }
         ext_redirect = (
-            "https://mcphffopiondckeljgldjknjiicdhajd.chromiumapp.org/?" + urlencode(params)
+            "https://cdhglamelhenopjpflmgljbemggcabjh.chromiumapp.org/?"
+            + urlencode(params)
         )
-
         return redirect(ext_redirect)
 
     elif session.get('from_react'):
