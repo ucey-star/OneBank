@@ -49,22 +49,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     } else if (message.action === 'extractData') {
         // Handle data extraction if necessary
         // You can define a function to handle this if needed
-    } else if (message.action === 'initiateGoogleAuth') {
-        console.log("Initiating Google auth...");
-        // Append ?ext=1 so the server uses the extension's redirect URI.
-        const authUrl = `${API_URL}/login/google?ext=1`;
-        console.log("Auth URL:", authUrl);
-        initiateGoogleAuth(authUrl)
-          .then((result) => {
-            console.log("Google auth successful, result:", result);
-            sendResponse({ success: true, user: result.user, message: result.message });
-          })
-          .catch((error) => {
-            console.error("Google auth failed:", error);
-            sendResponse({ success: false, error: error.message });
-          });
-        return true;
-      }
+    } 
     });
 
 // Function to check if the user is logged in by making a request to the backend
@@ -188,43 +173,6 @@ async function getFullCardDetails(cardType) {
     }
 }
 
-async function initiateGoogleAuth(authUrl) {
-    return new Promise((resolve, reject) => {
-      chrome.identity.launchWebAuthFlow(
-        {
-          url: authUrl,
-          interactive: true,
-        },
-        async (redirectUrl) => {
-          if (chrome.runtime.lastError) {
-            console.error("Launch Web Auth Flow error:", chrome.runtime.lastError.message);
-            return reject(new Error(chrome.runtime.lastError.message));
-          }
-          console.log("Redirect URL received:", redirectUrl);
-          try {
-            // Since the final redirect is handled by the server to include query parameters,
-            // parse the URL and extract those parameters.
-            const urlObj = new URL(redirectUrl);
-            const success = urlObj.searchParams.get("success") === "true";
-            if (success) {
-              const user = {
-                email: urlObj.searchParams.get("email"),
-                first_name: urlObj.searchParams.get("first_name"),
-                last_name: urlObj.searchParams.get("last_name"),
-                default_reward_type: urlObj.searchParams.get("default_reward_type")
-              };
-              const message = urlObj.searchParams.get("message");
-              resolve({ success, user, message });
-            } else {
-              reject(new Error("Google login unsuccessful"));
-            }
-          } catch (error) {
-            console.error("Error processing redirect URL:", error);
-            reject(new Error("Error processing auth result: " + error.message));
-          }
-        }
-      );
-    });
-  }
+
   
   

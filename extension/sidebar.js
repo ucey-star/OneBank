@@ -512,49 +512,6 @@ function showLoginForm() {
     formContainer.style.display = 'block';
 
     const loginErrorDiv = document.getElementById('login-error');
-
-    document.getElementById('google-login-button').addEventListener('click', async () => {
-        // Clear any previous error message
-        loginErrorDiv.textContent = "";
-      
-        // Send a message to the background script to initiate Google Auth
-        chrome.runtime.sendMessage({ action: 'initiateGoogleAuth' }, async (response) => {
-          if (response.success) {
-            // Update local storage with the new login state and user info
-            chrome.storage.local.set(
-              {
-                isLoggedIn: true,
-                userFirstName: response.user.first_name,
-                defaultRewardType: response.user.default_reward_type.toLowerCase()
-              },
-              () => {
-                // Update the UI
-                console.log("🔑 Logged in via Google:", response.user.first_name);
-                document.getElementById('welcome-text').textContent = `Hello, ${response.user.first_name}!`;
-                document.getElementById('plugin-status').textContent = "Logged in successfully via Google!";
-                formContainer.style.display = 'none';
-                defaultRewardType = response.user.default_reward_type.toLowerCase();
-                isLoggedIn =  true
-              }
-            );
-      
-            // Optionally auto-extract data after login
-            await autoExtractData();
-      
-            // Show the logout button, hide the login button
-            const logoutButton = document.getElementById("logout-button");
-            const loginButton = document.getElementById("login-button");
-            if (logoutButton) {
-              logoutButton.style.display = "block";
-            }
-            loginButton.style.display = "none";
-      
-          } else {
-            // Display the error inside the form
-            loginErrorDiv.textContent = response.error || "Google login failed. Please try again.";
-          }
-        });
-      });
       
 
     // The important part is marking this click callback as async 
