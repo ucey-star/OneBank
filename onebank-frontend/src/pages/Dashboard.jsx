@@ -27,6 +27,14 @@ export default function Dashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
   const [userFirstName, setUserFirstName] = useState("");
+  const [showExtensionWarning, setShowExtensionWarning] = useState(() => {
+    return !document.cookie.includes("hideExtensionWarning=true");
+  });
+
+  const handleCloseWarning = () => {
+    setShowExtensionWarning(false);
+    document.cookie = "hideExtensionWarning=true; path=/; max-age=" + 60 * 60 * 24 * 3;
+  };
 
 
   useEffect(() => {
@@ -251,6 +259,29 @@ export default function Dashboard() {
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
+      {showExtensionWarning && (
+          <div className="bg-yellow-100 text-yellow-800 px-4 py-3 border-b border-yellow-300 flex justify-between items-center">
+            <span>
+            ⚠️ A newer version of the OneBank extension is currently under review. The version live on the Chrome Web Store may contain a known bug.  
+              In the meantime, you can use the most up-to-date version by downloading the ZIP file directly.  
+              To verify it's live on the store, You can also use the latest deployed version here: {" "}
+              <a
+                href="https://chromewebstore.google.com/detail/one-bank/mcphffopiondckeljgldjknjiicdhajd?authuser=0&hl=en"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-700"
+              >
+                View on Chrome Web Store
+              </a>
+            </span>
+            <button
+              onClick={handleCloseWarning}
+              className="ml-4 text-sm font-medium text-yellow-800 hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       {/* -- Header -- */}
       <header id="header" className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
